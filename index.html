@@ -88,8 +88,17 @@
   .ligne .infos { color: var(--doux); font-size: .85rem; }
   .ligne .droite { flex: none; text-align: right; font-size: .92rem; font-weight: 600; }
   .ligne .droite .badge { display: block; margin-top: 4px; font-weight: 600; }
-  .bascule { display: flex; justify-content: flex-end; gap: 6px; margin: 0 0 12px; }
-  .bascule .puce { min-height: 36px; }
+  .bascule { display: flex; justify-content: flex-end; margin: 0 0 12px; }
+  .segment { display: inline-flex; border: 1px solid var(--trait); border-radius: 10px; overflow: hidden; background: #fff; }
+  .segment button {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px;
+    border: 0; background: none; cursor: pointer; font-size: .88rem; color: var(--doux);
+  }
+  .segment button + button { border-left: 1px solid var(--trait); }
+  .segment button[aria-pressed="true"] { background: #f3e4dd; color: var(--accent-fonce); font-weight: 600; }
+  .segment svg, .btn svg { width: 20px; height: 20px; flex: none; }
+  .actions-entete { display: flex; align-items: center; gap: 2px; flex: none; }
+  @media (max-width: 600px) { .txt-large { display: none; } .btn.lien.icone { min-width: 44px; min-height: 44px; } }
   .bloc { margin-bottom: 14px; }
   .rang { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
   .rang input { flex: 1; min-width: 120px; }
@@ -293,7 +302,7 @@ function dessinerPuces() {
 function dessinerGrille() {
   const zone = $("#grille"); if (!zone) return;
   zone.className = etat.vue === "liste" ? "liste" : "grille";
-  document.querySelectorAll("#bascule .puce").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.vue === etat.vue)));
+  document.querySelectorAll("#bascule button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.vue === etat.vue)));
   if (!etat.items.length) {
     zone.innerHTML = `<div class="vide" style="grid-column:1/-1">${etat.total_general ? "Aucune œuvre ne correspond à ce filtre." : "Le catalogue est vide. Ajoutez une première œuvre ou lancez un import."}</div>`;
   } else if (etat.vue === "liste") {
@@ -334,14 +343,15 @@ function vueListe() {
   app.innerHTML = `
     <div class="entete">
       <div><h1>Catalogue des œuvres</h1><div class="sous" id="resume">Chargement…</div></div>
-      <div style="text-align:right">${etat.admin ? `<button class="btn lien" id="admin">Administration</button>` : ""}<button class="btn lien" id="sortir">Déconnexion</button></div>
+      <div class="actions-entete">${etat.admin ? `<button class="btn lien" id="admin">Administration</button>` : ""}
+        <button class="btn lien icone" id="sortir" aria-label="Déconnexion" title="Déconnexion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="txt-large">Déconnexion</span></button></div>
     </div>
     <input id="q" type="search" placeholder="Rechercher un titre, une série, une technique…" value="${esc(etat.q)}" aria-label="Rechercher">
     <div class="puces" id="puces"></div>
-    <div class="bascule" id="bascule" role="group" aria-label="Mode d'affichage">
-      <button class="puce" data-vue="grille">Vignettes</button>
-      <button class="puce" data-vue="liste">Liste</button>
-    </div>
+    <div class="bascule"><div class="segment" id="bascule" role="group" aria-label="Mode d'affichage">
+      <button data-vue="grille"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>Vignettes</button>
+      <button data-vue="liste"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="4" height="4" rx="1"/><rect x="8" y="4" width="10" height="2" rx="1"/><rect x="2" y="8" width="4" height="4" rx="1"/><rect x="8" y="9" width="10" height="2" rx="1"/><rect x="2" y="13" width="4" height="4" rx="1"/><rect x="8" y="14" width="10" height="2" rx="1"/></svg>Liste</button>
+    </div></div>
     <div class="grille" id="grille"></div>
     <p style="text-align:center;margin-top:16px"><button class="btn" id="plus" hidden></button></p>
     <div class="barre-bas"><div class="contenu">
@@ -353,7 +363,7 @@ function vueListe() {
   $("#puces").addEventListener("click", (e) => { const b = e.target.closest(".puce"); if (!b) return; etat.statut = b.dataset.statut; dessinerPuces(); rafraichirListe(false); });
   $("#grille").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) vueFiche(b.dataset.id); });
   $("#bascule").addEventListener("click", (e) => {
-    const b = e.target.closest(".puce"); if (!b) return;
+    const b = e.target.closest("button[data-vue]"); if (!b) return;
     etat.vue = b.dataset.vue;
     try { localStorage.setItem("catalogue-vue", etat.vue); } catch (_) {}
     dessinerGrille();
