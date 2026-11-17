@@ -160,6 +160,73 @@
   .cache { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
   progress { width: 100%; height: 14px; accent-color: var(--accent); }
   ul.journal { padding-left: 18px; font-size: .88rem; color: var(--alerte); max-height: 200px; overflow: auto; }
+
+  /* ---------- Ajustements UX ---------- */
+  h1:focus { outline: none; }
+  [hidden] { display: none !important; }
+  .entete { min-height: 48px; }
+  .entete .gauche { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .entete h1 { min-width: 0; }
+  .btn.icone-seule { width: 44px; min-height: 44px; padding: 0; border: 0; background: none; border-radius: 10px; flex: none; }
+  .btn.icone-seule:hover { background: rgba(35,32,28,.06); }
+  .btn.icone-seule svg, .btn.icone-carree svg { width: 22px; height: 22px; }
+  .btn.icone-carree { width: 48px; padding: 0; flex: none; }
+  .btn.plein svg { width: 18px; height: 18px; }
+  .entete .gauche .btn.icone-seule { margin-left: -10px; }
+  .oeuvre { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; }
+  .oeuvre:hover, .ligne:hover { border-color: #cfc5b6; }
+  .ligne .infos { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .outils { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; min-height: 42px; }
+  .actions-bureau { display: none; gap: 10px; flex: none; }
+  .actions-bureau .btn { min-height: 44px; }
+  .barre-bas { z-index: 4; }
+  .barre-bas.mobile .btn:first-child, .barre-bas .contenu.fin .btn:first-child { flex: 0 0 auto; }
+  .barre-bas .message { max-width: 960px; margin: 0 auto 8px; }
+  .fiche { display: grid; gap: 14px; }
+  .fiche .apercu { max-height: 42vh; }
+  h2.section {
+    font: 600 .76rem/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--doux); margin: 26px 0 0; padding-top: 18px; border-top: 1px solid var(--trait);
+  }
+  h2.section.premiere { border-top: 0; padding-top: 0; margin-top: 14px; }
+  .req { color: var(--alerte); font-weight: 700; }
+  .aide { color: var(--doux); font-size: .85rem; margin: 6px 0 0; }
+  [aria-invalid="true"] { border-color: var(--alerte); background: #fff8f7; }
+  .champ-court { max-width: 240px; }
+  .zone-danger { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--trait); }
+  .rang.option { flex-wrap: nowrap; }
+  .rang.option input { min-width: 0; }
+  details.champ > summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; min-height: 32px;
+  }
+  details.champ > summary::-webkit-details-marker { display: none; }
+  details.champ > summary .nom { font-weight: 600; }
+  details.champ > summary .sous::after { content: "▾"; display: inline-block; margin-left: 10px; transition: transform .15s; }
+  details.champ[open] > summary .sous::after { transform: rotate(180deg); }
+  details.champ[open] > summary { padding-bottom: 12px; border-bottom: 1px solid var(--trait); }
+  .corb section.carte { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .corb .tete { flex: 1 1 240px; min-width: 0; }
+  .corb .rang { flex: 0 1 auto; flex-wrap: nowrap; margin: 0; }
+  .corb .rang .btn { flex: 1 1 auto; }
+  .bandeau { min-height: 56px; }
+  @media (max-width: 600px) { .corb .rang { flex: 1 1 100%; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (min-width: 900px) {
+    .page { max-width: 1100px; padding: 24px 32px; }
+    .etroit { max-width: 760px; }
+    body.avec-lateral .actions-bureau { display: flex; }
+    body.avec-lateral .barre-bas.mobile { display: none; }
+    body.avec-lateral .bandeau { left: 272px; bottom: 24px; }
+    body.avec-lateral.barre-visible .bandeau { bottom: 92px; }
+    .barre-bas .contenu, .barre-bas .message { max-width: 1036px; }
+    .barre-bas .contenu.fin { justify-content: flex-end; }
+    .barre-bas .contenu.fin .btn { flex: 0 0 auto; min-width: 170px; }
+    .fiche { grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); align-items: start; gap: 20px; }
+    .colonne-photo { position: sticky; top: 24px; }
+    .fiche .apercu { max-height: 60vh; }
+    .grille { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+    .vide { padding: 64px 10px; }
+  }
 </style>
 </head>
 <body>
@@ -191,7 +258,7 @@ try { vueMemorisee = localStorage.getItem("catalogue-vue") === "liste" ? "liste"
 const LIBELLES_DEFAUT = { technique: "Technique", support: "Support", nature: "Nature" };
 const TYPES = { texte: "Texte", nombre: "Nombre", liste: "Liste de choix", case: "Case à cocher" };
 const lateral = document.getElementById("lateral");
-const etat = { section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
+const etat = { jeton: 0, retour: null, gardien: null, modifie: false, adminOuvert: null, section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
 
 /* ---------- Utilitaires ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -199,7 +266,17 @@ const $ = (sel, racine = document) => racine.querySelector(sel);
 const urlPhoto = (chemin) => sb.storage.from(BUCKET).getPublicUrl(chemin).data.publicUrl;
 const nombre = (v) => { const n = parseFloat(String(v ?? "").replace(",", ".").replace(/\s/g, "")); return Number.isFinite(n) ? n : null; };
 const texte = (v) => { const t = String(v ?? "").trim(); return t === "" ? null : t; };
-const prix = (v) => v == null ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 }).format(v);
+const prix = (v) => v == null ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: Number.isInteger(Number(v)) ? 0 : 2, maximumFractionDigits: 2 }).format(v);
+const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICONES = {
+  retour: svg('<path d="M15 18l-6-6 6-6"/>'),
+  reglages: svg('<path d="M4 6h8M18 6h2M4 12h2M12 12h8M4 18h10M20 18h0"/><circle cx="15" cy="6" r="2.5"/><circle cx="9" cy="12" r="2.5"/><circle cx="17" cy="18" r="2.5"/>'),
+  sortir: svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  corbeille: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>'),
+  valider: svg('<path d="M5 12l5 5L20 7"/>')
+};
+const entete = (titre) => `<div class="entete"><div class="gauche"><button type="button" class="btn icone-seule" id="retour" aria-label="Retour" title="Retour">${ICONES.retour}</button><h1>${esc(titre)}</h1></div></div>`;
 const dims = (o) => (o.hauteur_cm && o.largeur_cm) ? `${String(o.hauteur_cm).replace(".", ",")} × ${String(o.largeur_cm).replace(".", ",")} cm` : "";
 const poids = (octets) => octets == null ? "" : octets < 1048576
   ? `${Math.max(1, Math.round(octets / 1024))} Ko`
@@ -247,7 +324,7 @@ async function envoyerPhoto(id, fichier) {
 }
 
 /* Fenêtre de confirmation : « Annuler » en bouton principal, action dangereuse inactive 2 secondes. */
-function confirmer({ titre, corps, vignette, action }) {
+function confirmer({ titre, corps, vignette, action, annuler = "Annuler", delai = 2 }) {
   return new Promise((resoudre) => {
     const voile = document.createElement("div"); voile.className = "voile";
     voile.innerHTML = `
@@ -255,13 +332,13 @@ function confirmer({ titre, corps, vignette, action }) {
         <div class="tete">${vignette ? `<img alt="" src="${esc(vignette)}">` : ""}<h2 id="dlg-titre">${esc(titre)}</h2></div>
         <p id="dlg-corps">${esc(corps)}</p>
         <div style="display:grid;gap:10px">
-          <button class="btn plein large" data-r="non">Annuler</button>
-          <button class="btn danger large" data-r="oui" disabled>${esc(action)} (2)</button>
+          <button class="btn plein large" data-r="non">${esc(annuler)}</button>
+          <button class="btn danger large" data-r="oui" ${delai ? "disabled" : ""}>${esc(action)}${delai ? ` (${delai})` : ""}</button>
         </div>
       </div>`;
     document.body.append(voile);
     const oui = voile.querySelector('[data-r="oui"]');
-    let reste = 2;
+    let reste = delai;
     const minuterie = setInterval(() => {
       reste--;
       if (reste > 0) oui.textContent = `${action} (${reste})`;
@@ -282,10 +359,10 @@ function confirmer({ titre, corps, vignette, action }) {
 function bandeau(message, libelle, action) {
   document.querySelectorAll(".bandeau").forEach((b) => b.remove());
   const el = document.createElement("div"); el.className = "bandeau"; el.setAttribute("role", "status");
-  el.innerHTML = `<span>${esc(message)}</span><button type="button">${esc(libelle)}</button>`;
+  el.innerHTML = `<span>${esc(message)}</span>${libelle ? `<button type="button">${esc(libelle)}</button>` : ""}`;
   document.body.append(el);
-  const fin = setTimeout(() => el.remove(), 10000);
-  el.querySelector("button").addEventListener("click", async () => { clearTimeout(fin); el.remove(); await action(); });
+  const fin = setTimeout(() => el.remove(), libelle ? 10000 : 4000);
+  if (libelle) el.querySelector("button").addEventListener("click", async () => { clearTimeout(fin); el.remove(); await action(); });
 }
 
 async function effacerPhotos(lignes) {
@@ -305,7 +382,8 @@ const champsPerso = () => etat.champs.filter((c) => !c.systeme);
 /* ---------- Barre latérale (écrans larges) ---------- */
 function masquerLateral() { lateral.hidden = true; document.body.classList.remove("avec-lateral"); }
 function majLateral(section) {
-  if (section != null) etat.section = section;
+  if (section != null) { etat.section = section; etat.gardien = null; etat.modifie = false; }
+  document.body.classList.remove("barre-visible");
   const lien = (cle, libelle, n) => `<button class="lat-lien" data-nav="${cle}" ${etat.section === cle ? 'aria-current="page"' : ""}><span>${esc(libelle)}</span>${n == null ? "" : `<span class="n">${n}</span>`}</button>`;
   lateral.innerHTML = `
     <div class="lat-marque">Catalogue des œuvres</div>
@@ -324,9 +402,11 @@ function majLateral(section) {
     <div class="lat-bas"><button class="lat-lien" data-nav="sortir"><span>Déconnexion</span></button></div>`;
   lateral.hidden = false; document.body.classList.add("avec-lateral");
 }
-lateral.addEventListener("click", (e) => {
+lateral.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-nav]"); if (!b || etat.occupe) return;
   const nav = b.dataset.nav;
+  if (etat.gardien && !(await etat.gardien())) return;
+  etat.retour = null;
   if (nav === "admin") vueAdmin();
   else if (nav === "corbeille") vueCorbeille();
   else if (nav === "sortir") sb.auth.signOut();
@@ -343,9 +423,11 @@ function vueConnexion(message = "", type = "erreur") {
       ${message ? `<div class="message ${type}">${message}</div>` : ""}
       <form id="f">
         <label for="email">Adresse e-mail</label>
-        <input id="email" type="email" autocomplete="email" required>
+        <input id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" required>
         <label for="mdp">Mot de passe</label>
-        <input id="mdp" type="password" autocomplete="current-password" minlength="8" required>
+        <input id="mdp" type="password" autocomplete="current-password" minlength="8" required aria-describedby="mdp-aide">
+        <p class="aide" id="mdp-aide">8 caractères minimum.</p>
+        <label class="coche" for="voir"><input id="voir" type="checkbox"> Afficher le mot de passe</label>
         <div style="display:grid;gap:10px;margin-top:18px">
           <button class="btn plein large" type="submit">Se connecter</button>
           <button class="btn large" type="button" id="creer">Créer mon compte</button>
@@ -354,13 +436,17 @@ function vueConnexion(message = "", type = "erreur") {
       <p class="sous" style="margin-top:14px">Seules les adresses autorisées accèdent au catalogue.</p>
     </div>`;
   const lire = () => ({ email: $("#email").value.trim(), password: $("#mdp").value });
+  $("#voir").addEventListener("change", (e) => { $("#mdp").type = e.target.checked ? "text" : "password"; });
+  const occuper = (b, t) => { app.querySelectorAll("#f button").forEach((x) => { x.disabled = true; }); b.textContent = t; };
   $("#f").addEventListener("submit", async (e) => {
     e.preventDefault();
+    occuper($("#f button[type=submit]"), "Connexion…");
     const { error } = await sb.auth.signInWithPassword(lire());
     if (error) vueConnexion(error.message === "Invalid login credentials" ? "E-mail ou mot de passe incorrect. Si vous n'avez pas encore de compte, saisissez votre adresse et un mot de passe, puis utilisez le bouton « Créer mon compte »." : error.message === "Email not confirmed" ? "Adresse non confirmée : cliquez d'abord sur le lien reçu par e-mail." : msgErreur(error));
   });
   $("#creer").addEventListener("click", async () => {
     if (!$("#f").reportValidity()) return;
+    occuper($("#creer"), "Création du compte…");
     const { data, error } = await sb.auth.signUp({ ...lire(), options: { emailRedirectTo: location.origin + location.pathname } });
     if (error) return vueConnexion(msgErreur(error));
     if (!data.session) vueConnexion("Compte créé. Un e-mail de confirmation vient de vous être envoyé : cliquez sur le lien qu'il contient, puis revenez vous connecter ici.", "info");
@@ -412,14 +498,15 @@ async function chargerComptes() {
   }
 }
 
-async function chargerPage(reinitialiser) {
-  if (reinitialiser) { etat.items = []; etat.page = 0; }
-  const debut = etat.page * PAGE;
+async function chargerPage(reinitialiser, jeton = etat.jeton) {
+  const page = reinitialiser ? 0 : etat.page, debut = page * PAGE;
   const { data, count, error } = await filtrer(
     sb.from("oeuvres").select("id,titre,statut,prix_eur,vignette_path,technique,support,annee,hauteur_cm,largeur_cm", { count: "exact" })
   ).order("cree_le", { ascending: false }).order("id").range(debut, debut + PAGE - 1);
   if (error) throw error;
-  etat.items.push(...data); etat.total = count ?? etat.items.length; etat.page++;
+  if (jeton !== etat.jeton) return; // réponse périmée : une recherche plus récente est en cours
+  if (reinitialiser) etat.items = [];
+  etat.items.push(...data); etat.total = count ?? etat.items.length; etat.page = page + 1;
 }
 
 function dessinerPuces() {
@@ -458,35 +545,48 @@ function dessinerGrille() {
   const reste = etat.total - etat.items.length;
   $("#plus").hidden = reste <= 0;
   $("#plus").textContent = `Afficher plus (${reste} restantes)`;
-  $("#resume").textContent = `${etat.total} œuvre${etat.total > 1 ? "s" : ""} affichable${etat.total > 1 ? "s" : ""} sur ${etat.total_general} au catalogue`;
+  $("#resume").textContent = `${etat.total} œuvre${etat.total > 1 ? "s" : ""}${etat.statut || etat.q.trim() ? ` sur ${etat.total_general}` : ""}`;
 }
 
-async function rafraichirListe(avecComptes) {
+async function rafraichirListe(avecComptes, pages = 1) {
+  const jeton = ++etat.jeton;
   try {
-    await Promise.all([chargerPage(true), avecComptes ? chargerComptes() : null]);
+    await Promise.all([chargerPage(true, jeton), avecComptes ? chargerComptes() : null]);
+    while (jeton === etat.jeton && etat.page < pages && etat.items.length < etat.total) await chargerPage(false, jeton);
+    if (jeton !== etat.jeton) return;
     dessinerPuces(); dessinerGrille(); majLateral();
-  } catch (e) { $("#grille").innerHTML = `<div class="message erreur" style="grid-column:1/-1">${msgErreur(e)}</div>`; }
+  } catch (e) { if ($("#grille")) $("#grille").innerHTML = `<div class="message erreur" style="grid-column:1/-1">${msgErreur(e)}</div>`; }
 }
 
 function vueListe() {
   majLateral("liste:" + etat.statut);
+  const retour = etat.retour; etat.retour = null;
   app.innerHTML = `
     <div class="entete">
-      <div><h1>Catalogue des œuvres</h1><div class="sous" id="resume">Chargement…</div></div>
-      <div class="actions-entete">${etat.admin ? `<button class="btn lien" id="admin">Administration</button>` : ""}
-        <button class="btn lien icone" id="sortir" aria-label="Déconnexion" title="Déconnexion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="txt-large">Déconnexion</span></button></div>
+      <h1>Catalogue des œuvres</h1>
+      <div class="actions-entete">
+        ${etat.admin ? `<button class="btn icone-seule" id="admin" aria-label="Administration" title="Administration">${ICONES.reglages}</button>` : ""}
+        <button class="btn icone-seule" id="sortir" aria-label="Déconnexion" title="Déconnexion">${ICONES.sortir}</button>
+      </div>
+      <div class="actions-bureau">
+        <button class="btn" data-go="import">Import en lot</button>
+        <button class="btn plein" data-go="ajouter">${ICONES.plus}Ajouter une œuvre</button>
+      </div>
     </div>
-    <input id="q" type="search" placeholder="Rechercher un titre, une série, une technique…" value="${esc(etat.q)}" aria-label="Rechercher">
-    <div class="puces" id="puces"></div>
-    <div class="bascule"><div class="segment" id="bascule" role="group" aria-label="Mode d'affichage">
-      <button data-vue="grille"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>Vignettes</button>
-      <button data-vue="liste"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="4" height="4" rx="1"/><rect x="8" y="4" width="10" height="2" rx="1"/><rect x="2" y="8" width="4" height="4" rx="1"/><rect x="8" y="9" width="10" height="2" rx="1"/><rect x="2" y="13" width="4" height="4" rx="1"/><rect x="8" y="14" width="10" height="2" rx="1"/></svg>Liste</button>
-    </div></div>
-    <div class="grille" id="grille"></div>
+    <input id="q" type="search" enterkeyhint="search" placeholder="Rechercher un titre, une série, une technique…" value="${esc(etat.q)}" aria-label="Rechercher dans le catalogue">
+    <div class="puces" id="puces" role="group" aria-label="Filtrer par statut"></div>
+    <div class="outils">
+      <div class="sous" id="resume" aria-live="polite"></div>
+      <div class="segment" id="bascule" role="group" aria-label="Mode d'affichage">
+        <button data-vue="grille"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>Vignettes</button>
+        <button data-vue="liste"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="4" height="4" rx="1"/><rect x="8" y="4" width="10" height="2" rx="1"/><rect x="2" y="8" width="4" height="4" rx="1"/><rect x="8" y="9" width="10" height="2" rx="1"/><rect x="2" y="13" width="4" height="4" rx="1"/><rect x="8" y="14" width="10" height="2" rx="1"/></svg>Liste</button>
+      </div>
+    </div>
+    <div class="grille" id="grille"><div class="vide" style="grid-column:1/-1">Chargement…</div></div>
     <p style="text-align:center;margin-top:16px"><button class="btn" id="plus" hidden></button></p>
-    <div class="barre-bas"><div class="contenu">
-      <button class="btn" id="import">Import en lot</button>
-      <button class="btn plein" id="ajouter">+ Ajouter une œuvre</button>
+    <div class="barre-bas mobile"><div class="contenu">
+      <button class="btn" data-go="import">Importer</button>
+      <button class="btn plein" data-go="ajouter">${ICONES.plus}Ajouter une œuvre</button>
     </div></div>`;
   let minuterie;
   $("#q").addEventListener("input", (e) => { clearTimeout(minuterie); minuterie = setTimeout(() => { etat.q = e.target.value; rafraichirListe(false); }, 300); });
@@ -499,11 +599,11 @@ function vueListe() {
     dessinerGrille();
   });
   $("#plus").addEventListener("click", async () => { try { await chargerPage(false); dessinerGrille(); } catch (e) { $("#resume").textContent = "Erreur de chargement : " + (e.message || e); } });
-  $("#ajouter").addEventListener("click", () => vueFiche(null));
-  $("#import").addEventListener("click", vueImport);
+  app.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => (b.dataset.go === "import" ? vueImport() : vueFiche(null))));
   if (etat.admin) $("#admin").addEventListener("click", () => vueAdmin());
   $("#sortir").addEventListener("click", () => sb.auth.signOut());
-  rafraichirListe(true);
+  if (!retour) window.scrollTo(0, 0);
+  rafraichirListe(true, retour ? retour.pages : 1).then(() => { if (retour && $("#grille")) window.scrollTo(0, retour.y); });
 }
 
 /* ---------- Fiche (ajout / modification) ---------- */
@@ -515,6 +615,8 @@ async function suggestions() {
 }
 
 async function vueFiche(id) {
+  etat.retour = id && $("#grille") ? { y: window.scrollY, pages: etat.page } : null;
+  etat.gardien = null; etat.modifie = false;
   app.innerHTML = `<p class="sous">Chargement…</p>`;
   window.scrollTo(0, 0);
   let o = { titre: "", statut: "" };
@@ -528,7 +630,7 @@ async function vueFiche(id) {
   const perso = o.champs_perso || {};
   const champPerso = (c) => {
     const v = perso[c.id], idc = "cp-" + c.id;
-    const lab = `<label for="${idc}">${esc(c.libelle)} <span class="opt">(facultatif)</span></label>`;
+    const lab = `<label for="${idc}">${esc(c.libelle)}</label>`;
     if (c.type === "liste") {
       const vals = v && !c.options.includes(v) ? [...c.options, v] : c.options;
       return `${lab}<select id="${idc}"><option value="">Choisir…</option>${vals.map((x) => `<option value="${esc(x)}" ${v === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>`;
@@ -538,86 +640,122 @@ async function vueFiche(id) {
     return `${lab}<input id="${idc}" value="${esc(v)}" autocomplete="off">`;
   };
   const champListe = (cle, lib) => `
-    <div><label for="${cle}">${lib} <span class="opt">(facultatif)</span></label>
+    <div><label for="${cle}">${lib}</label>
     <input id="${cle}" list="l-${cle}" value="${esc(o[cle])}" autocomplete="off">
     <datalist id="l-${cle}">${[...listes[cle]].sort((a, b) => a.localeCompare(b, "fr")).map((v) => `<option value="${esc(v)}">`).join("")}</datalist></div>`;
   const champChoix = (cle) => {
     const c = champSysteme(cle);
     const valeurs = o[cle] && !c.options.includes(o[cle]) ? [...c.options, o[cle]] : c.options;
     return `
-    <div><label for="${cle}">${esc(c.libelle)} <span class="opt">(facultatif)</span></label>
+    <div><label for="${cle}">${esc(c.libelle)}</label>
     <select id="${cle}">
       <option value="" ${o[cle] ? "" : "selected"}>Choisir…</option>
       ${valeurs.map((v) => `<option value="${esc(v)}" ${o[cle] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}
     </select></div>`;
   };
+  const req = `<span class="req" aria-hidden="true">*</span>`;
+  const perso_html = champsPerso().map(champPerso).join("");
   app.innerHTML = `
-    <div class="entete"><h1>${id ? "Modifier l'œuvre" : "Nouvelle œuvre"}</h1><button class="btn lien" id="retour">Retour</button></div>
-    <form id="f" class="carte" novalidate>
-      <div id="alerte"></div>
-      ${id ? `<a href="${esc(urlPhoto(o.photo_path))}" target="_blank" rel="noopener"><img class="apercu" id="apercu" alt="Photo de l'œuvre" src="${esc(urlPhoto(o.photo_path))}"></a>`
-           : `<img class="apercu" id="apercu" alt="" hidden>`}
-      <label class="zone-photo" for="photo" id="zone" style="margin-top:${id ? "12px" : "0"};min-height:${id ? "56px" : "160px"}">${id ? "Remplacer la photo" : "Toucher ici pour prendre ou choisir une photo"}</label>
-      <input class="cache" id="photo" type="file" accept="image/*">
+    ${entete(id ? "Modifier l'œuvre" : "Nouvelle œuvre")}
+    <form id="f" class="fiche" novalidate>
+      <div class="carte colonne-photo">
+        ${id ? `<a href="${esc(urlPhoto(o.photo_path))}" target="_blank" rel="noopener" title="Ouvrir la photo en grand"><img class="apercu" id="apercu" alt="Photo de l'œuvre" src="${esc(urlPhoto(o.photo_path))}"></a>`
+             : `<img class="apercu" id="apercu" alt="Aperçu de la photo choisie" hidden>`}
+        <label class="zone-photo" for="photo" id="zone" style="margin-top:${id ? "12px" : "0"};min-height:${id ? "56px" : "160px"}">${id ? "Remplacer la photo" : `<span>Toucher ici pour prendre ou choisir une photo&nbsp;${req}</span>`}</label>
+        <input class="cache" id="photo" type="file" accept="image/*">
+        ${id ? `<p class="aide">${[
+          o.poids_photo_octets != null ? `Photo en ligne : ${poids(o.poids_photo_octets)}` : "",
+          o.fichier_origine ? `Fichier d'origine : ${esc(o.fichier_origine)}${o.poids_origine_octets != null ? ` (${poids(o.poids_origine_octets)})` : ""}` : ""
+        ].filter(Boolean).join("<br>")}</p>` : ""}
+      </div>
+      <div class="carte">
+        <p class="aide" style="margin:0">Les champs marqués ${req} sont obligatoires.</p>
+        <h2 class="section premiere">Identification</h2>
+        <label for="titre">Titre</label>
+        <input id="titre" value="${esc(o.titre === "Sans titre" ? "" : o.titre)}" placeholder="Sans titre" autocomplete="off" enterkeyhint="next">
+        <label for="statut">Statut ${req}</label>
+        <select id="statut" required aria-required="true">
+          <option value="" ${o.statut ? "" : "selected"} disabled>Choisir…</option>
+          ${Object.entries(STATUTS).map(([c, l]) => `<option value="${c}" ${o.statut === c ? "selected" : ""}>${l}</option>`).join("")}
+        </select>
 
-      <label for="titre">Titre</label>
-      <input id="titre" value="${esc(o.titre === "Sans titre" ? "" : o.titre)}" placeholder="Sans titre" autocomplete="off">
-      <label for="statut">Statut</label>
-      <select id="statut" required>
-        <option value="" ${o.statut ? "" : "selected"} disabled>Choisir…</option>
-        ${Object.entries(STATUTS).map(([c, l]) => `<option value="${c}" ${o.statut === c ? "selected" : ""}>${l}</option>`).join("")}
-      </select>
-      <div class="deux">${champChoix("technique", "Technique")}${champChoix("support", "Support")}</div>
-      <div class="deux">${champChoix("nature", "Nature")}${champListe("serie", "Série ou thème")}</div>
-      <div class="deux">
-        <div><label for="hauteur">Hauteur en cm <span class="opt">(facultatif)</span></label><input id="hauteur" inputmode="decimal" value="${esc(String(o.hauteur_cm ?? "").replace(".", ","))}"></div>
-        <div><label for="largeur">Largeur en cm <span class="opt">(facultatif)</span></label><input id="largeur" inputmode="decimal" value="${esc(String(o.largeur_cm ?? "").replace(".", ","))}"></div>
+        <h2 class="section">Caractéristiques</h2>
+        <div class="deux">${champChoix("technique")}${champChoix("support")}</div>
+        <div class="deux">${champChoix("nature")}${champListe("serie", "Série ou thème")}</div>
+        <div class="deux">
+          <div><label for="hauteur">Hauteur (cm)</label><input id="hauteur" inputmode="decimal" autocomplete="off" value="${esc(String(o.hauteur_cm ?? "").replace(".", ","))}"></div>
+          <div><label for="largeur">Largeur (cm)</label><input id="largeur" inputmode="decimal" autocomplete="off" value="${esc(String(o.largeur_cm ?? "").replace(".", ","))}"></div>
+        </div>
+        <div class="deux">
+          <div><label for="annee">Année</label><input id="annee" inputmode="numeric" maxlength="4" autocomplete="off" value="${esc(o.annee)}"></div>
+          <div><label for="encadre">Encadrement</label>
+            <select id="encadre">
+              <option value="" ${o.encadre == null ? "selected" : ""}>Non renseigné</option>
+              <option value="oui" ${o.encadre === true ? "selected" : ""}>Encadré</option>
+              <option value="non" ${o.encadre === false ? "selected" : ""}>Non encadré</option>
+            </select></div>
+        </div>
+
+        <h2 class="section">Vente</h2>
+        <label for="prix">Prix (€)</label>
+        <input id="prix" class="champ-court" inputmode="decimal" autocomplete="off" value="${esc(String(o.prix_eur ?? "").replace(".", ","))}">
+        <label class="coche" for="prix_masque"><input id="prix_masque" type="checkbox" ${o.prix_masque ? "checked" : ""}> Ne pas afficher le prix sur le site web</label>
+
+        ${perso_html ? `<h2 class="section">Informations complémentaires</h2>${perso_html}` : ""}
+
+        <h2 class="section">Suivi interne</h2>
+        <label for="notes">Notes privées</label>
+        <textarea id="notes" aria-describedby="notes-aide">${esc(o.notes_privees)}</textarea>
+        <p class="aide" id="notes-aide">Acheteur, date de vente… Ces notes ne sont jamais publiées.</p>
+
+        ${id ? `<div class="zone-danger"><button class="btn danger" type="button" id="supprimer">Supprimer cette œuvre…</button></div>` : ""}
       </div>
-      <div class="deux">
-        <div><label for="annee">Année <span class="opt">(facultatif)</span></label><input id="annee" inputmode="numeric" maxlength="4" value="${esc(o.annee)}"></div>
-        <div><label for="prix">Prix en € <span class="opt">(facultatif)</span></label><input id="prix" inputmode="decimal" value="${esc(String(o.prix_eur ?? "").replace(".", ","))}">
-          <label class="coche" for="prix_masque"><input id="prix_masque" type="checkbox" ${o.prix_masque ? "checked" : ""}> Ne pas afficher le prix sur le site web</label></div>
+    </form>
+    <div class="barre-bas">
+      <div id="alerte" role="alert"></div>
+      <div class="contenu fin">
+        <button class="btn" type="button" id="annuler">Annuler</button>
+        <button class="btn plein" type="submit" form="f" id="valider">Enregistrer</button>
       </div>
-      <label for="encadre">Encadrement <span class="opt">(facultatif)</span></label>
-      <select id="encadre">
-        <option value="" ${o.encadre == null ? "selected" : ""}>Non renseigné</option>
-        <option value="oui" ${o.encadre === true ? "selected" : ""}>Encadré</option>
-        <option value="non" ${o.encadre === false ? "selected" : ""}>Non encadré</option>
-      </select>
-      ${champsPerso().map(champPerso).join("")}
-      <label for="notes">Notes privées <span class="opt">(acheteur, date de vente… jamais publiées)</span></label>
-      <textarea id="notes">${esc(o.notes_privees)}</textarea>
-      ${id ? `<p class="sous">${[
-        o.poids_photo_octets != null ? `Photo en ligne : ${poids(o.poids_photo_octets)}` : "",
-        o.fichier_origine ? `Fichier d'origine : ${esc(o.fichier_origine)}${o.poids_origine_octets != null ? ` (${poids(o.poids_origine_octets)})` : ""}` : ""
-      ].filter(Boolean).join("<br>")}</p>` : ""}
-      <div style="display:grid;gap:10px;margin-top:20px">
-        <button class="btn plein large" type="submit" id="valider">Enregistrer</button>
-        ${id ? `<button class="btn danger large" type="button" id="supprimer">Supprimer cette œuvre…</button>` : ""}
-      </div>
-    </form>`;
-  $("#retour").addEventListener("click", vueListe);
+    </div>`;
+  document.body.classList.add("barre-visible");
   let fichier = null;
+  const marquer = () => { etat.modifie = true; };
+  $("#f").addEventListener("input", (e) => { marquer(); e.target.removeAttribute("aria-invalid"); });
+  $("#f").addEventListener("change", marquer);
+  etat.gardien = async () => !etat.modifie || confirmer({
+    titre: "Quitter sans enregistrer ?", corps: "Les modifications apportées à cette fiche seront perdues.",
+    action: "Quitter sans enregistrer", annuler: "Continuer la saisie", delai: 0
+  });
+  const quitter = async () => { if (await etat.gardien()) vueListe(); };
+  $("#retour").addEventListener("click", quitter);
+  $("#annuler").addEventListener("click", quitter);
   $("#photo").addEventListener("change", (e) => {
     fichier = e.target.files[0] || null; if (!fichier) return;
     const img = $("#apercu"); img.src = URL.createObjectURL(fichier); img.hidden = false;
     $("#zone").textContent = "Changer de photo"; $("#zone").style.minHeight = "56px"; $("#zone").style.marginTop = "12px";
+    $("#zone").removeAttribute("aria-invalid");
   });
-  const alerte = (m) => { $("#alerte").innerHTML = m ? `<div class="message erreur">${m}</div>` : ""; if (m) window.scrollTo(0, 0); };
+  const alerte = (m, champ) => {
+    $("#alerte").innerHTML = m ? `<div class="message erreur">${m}</div>` : "";
+    app.querySelectorAll("#f [aria-invalid]").forEach((el) => el.removeAttribute("aria-invalid"));
+    const el = m && champ && document.getElementById(champ);
+    if (el) { el.setAttribute("aria-invalid", "true"); el.scrollIntoView({ block: "center" }); if (el.focus) el.focus({ preventScroll: true }); }
+  };
 
   $("#f").addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!id && !fichier) return alerte("Ajoutez une photo de l'œuvre.");
-    if (!$("#statut").value) return alerte("Choisissez un statut.");
+    if (!id && !fichier) return alerte("Ajoutez une photo de l'œuvre.", "zone");
+    if (!$("#statut").value) return alerte("Choisissez un statut.", "statut");
     const h = nombre($("#hauteur").value), l = nombre($("#largeur").value), a = nombre($("#annee").value), p = nombre($("#prix").value);
-    if ((texte($("#hauteur").value) && !(h > 0)) || (texte($("#largeur").value) && !(l > 0))) return alerte("Les dimensions doivent être des nombres positifs.");
-    if (texte($("#annee").value) && !(Number.isInteger(a) && a >= 1900 && a <= 2100)) return alerte("L'année doit comporter quatre chiffres.");
-    if (texte($("#prix").value) && !(p >= 0)) return alerte("Le prix doit être un nombre.");
+    if ((texte($("#hauteur").value) && !(h > 0)) || (texte($("#largeur").value) && !(l > 0))) return alerte("Les dimensions doivent être des nombres positifs.", texte($("#hauteur").value) && !(h > 0) ? "hauteur" : "largeur");
+    if (texte($("#annee").value) && !(Number.isInteger(a) && a >= 1900 && a <= 2100)) return alerte("L'année doit comporter quatre chiffres, par exemple 2024.", "annee");
+    if (texte($("#prix").value) && !(p >= 0)) return alerte("Le prix doit être un nombre, par exemple 450.", "prix");
     const cp = { ...(o.champs_perso || {}) };
     for (const c of champsPerso()) {
       const el = document.getElementById("cp-" + c.id); if (!el) continue;
       const v = c.type === "case" ? el.checked : c.type === "nombre" ? nombre(el.value) : texte(el.value);
-      if (c.type === "nombre" && texte(el.value) && v === null) return alerte(`« ${esc(c.libelle)} » doit être un nombre.`);
+      if (c.type === "nombre" && texte(el.value) && v === null) return alerte(`« ${esc(c.libelle)} » doit être un nombre.`, "cp-" + c.id);
       if (v === null || v === false) delete cp[c.id]; else cp[c.id] = v;
     }
     const valeurs = {
@@ -638,7 +776,9 @@ async function vueFiche(id) {
       const { error } = await req;
       if (error) throw error;
       if (id && fichier) await sb.storage.from(BUCKET).remove([o.photo_path, o.vignette_path]);
+      etat.modifie = false;
       vueListe();
+      bandeau(id ? "Modifications enregistrées" : "Œuvre ajoutée au catalogue");
     } catch (err) { bouton.disabled = false; bouton.textContent = "Enregistrer"; alerte(msgErreur(err)); }
   });
 
@@ -654,6 +794,7 @@ async function vueFiche(id) {
       b.disabled = true;
       const { data, error } = await sb.from("oeuvres").update({ supprime_le: new Date().toISOString() }).eq("id", id).select("id");
       if (error || !data.length) { b.disabled = false; return alerte(error ? msgErreur(error) : "Suppression refusée."); }
+      etat.modifie = false; etat.retour = null;
       vueListe();
       bandeau("Œuvre placée dans la corbeille", "Annuler", async () => {
         await sb.from("oeuvres").update({ supprime_le: null }).eq("id", id);
@@ -676,15 +817,15 @@ async function vueCorbeille(message = "", type = "info") {
   else { etat.enCorbeille = items.length; majLateral(); }
   const jour = (d) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   app.innerHTML = `
-    <div id="corb" class="corb">
-      <div class="entete"><h1>Corbeille</h1><button class="btn lien" id="retour">Retour</button></div>
+    <div id="corb" class="corb etroit">
+      ${entete("Corbeille")}
       <p class="sous">Les œuvres supprimées restent ici tant qu'un administrateur ne les efface pas définitivement.</p>
       <div id="alerte">${message ? `<div class="message ${type}">${message}</div>` : ""}</div>
       ${items.map((o) => `
         <section class="carte bloc" data-id="${o.id}">
           <div class="tete"><img loading="lazy" alt="" src="${esc(urlPhoto(o.vignette_path))}">
             <div><strong>${esc(o.titre)}</strong><div class="sous">Supprimée le ${esc(jour(o.supprime_le))}</div></div></div>
-          <div class="rang"><button class="btn" data-action="restaurer">Restaurer</button><button class="btn danger" data-action="effacer">Supprimer définitivement</button></div>
+          <div class="rang"><button class="btn" data-action="restaurer">Restaurer</button><button class="btn danger" data-action="effacer">Supprimer</button></div>
         </section>`).join("") || `<div class="vide">La corbeille est vide.</div>`}
       ${items.length ? `<button class="btn danger large" id="vider" style="margin-top:8px">Vider la corbeille (${items.length})</button>` : ""}
     </div>`;
@@ -742,22 +883,23 @@ async function vueAdmin(message = "", type = "info") {
   try { await chargerChamps(); } catch (e) { message = msgErreur(e); type = "erreur"; }
   const { count: enCorbeille } = await sb.from("oeuvres").select("id", { count: "exact", head: true }).not("supprime_le", "is", null);
   const carte = (c) => `
-    <section class="carte bloc" data-champ="${c.id}">
-      <div class="sous">${c.systeme ? "Champ d'origine" : "Champ supplémentaire"} · ${TYPES[c.type]}</div>
+    <details class="carte bloc champ" data-champ="${c.id}" ${etat.adminOuvert === c.id ? "open" : ""}>
+      <summary><span class="nom">${esc(c.libelle)}</span><span class="sous">${TYPES[c.type]}${c.type === "liste" ? ` · ${c.options.length} choix` : ""}</span></summary>
       <label for="lib-${c.id}">Libellé du champ</label>
-      <div class="rang"><input id="lib-${c.id}" value="${esc(c.libelle)}"><button class="btn" data-action="libelle">Enregistrer</button></div>
+      <div class="rang"><input id="lib-${c.id}" value="${esc(c.libelle)}" autocomplete="off"><button class="btn" data-action="libelle">Enregistrer</button></div>
       ${c.type === "liste" ? `
         <label>Choix proposés</label>
         ${c.options.map((v, i) => `
-          <div class="rang"><input data-option="${i}" value="${esc(v)}" aria-label="Choix ${i + 1}">
-          <button class="btn" data-action="renommer" data-i="${i}">Renommer</button>
-          <button class="btn danger" data-action="retirer" data-i="${i}">Retirer</button></div>`).join("") || `<p class="sous">Aucun choix pour l'instant.</p>`}
-        <div class="rang"><input data-nouveau placeholder="Nouveau choix" aria-label="Nouveau choix"><button class="btn" data-action="ajouter">Ajouter</button></div>` : ""}
-      ${c.systeme ? "" : `<button class="btn danger large" data-action="supprimer" style="margin-top:16px">Supprimer ce champ</button>`}
-    </section>`;
+          <div class="rang option"><input data-option="${i}" data-initial="${esc(v)}" value="${esc(v)}" aria-label="Choix ${i + 1}" autocomplete="off">
+          <button class="btn icone-carree" data-action="renommer" data-i="${i}" aria-label="Enregistrer le nouveau nom" title="Enregistrer le nouveau nom" disabled>${ICONES.valider}</button>
+          <button class="btn danger icone-carree" data-action="retirer" data-i="${i}" aria-label="Retirer le choix ${esc(v)}" title="Retirer ce choix">${ICONES.corbeille}</button></div>`).join("") || `<p class="sous">Aucun choix pour l'instant.</p>`}
+        <p class="aide">Modifiez un nom puis validez avec la coche : les œuvres concernées sont mises à jour.</p>
+        <div class="rang"><input data-nouveau placeholder="Nouveau choix" aria-label="Nouveau choix" autocomplete="off"><button class="btn" data-action="ajouter">Ajouter</button></div>` : ""}
+      ${c.systeme ? "" : `<div class="zone-danger"><button class="btn danger" data-action="supprimer">Supprimer ce champ</button></div>`}
+    </details>`;
   app.innerHTML = `
-    <div id="adm">
-      <div class="entete"><h1>Administration</h1><button class="btn lien" id="retour">Retour</button></div>
+    <div id="adm" class="etroit">
+      ${entete("Administration")}
       <p class="sous">Champs et listes de choix des fiches. Les modifications s'appliquent à toutes les œuvres.</p>
       <div id="alerte">${message ? `<div class="message ${type}">${message}</div>` : ""}</div>
       <section class="carte bloc">
@@ -792,11 +934,23 @@ async function vueAdmin(message = "", type = "info") {
     } catch (e) { erreur(msgErreur(e)); }
   });
 
+  $("#adm").addEventListener("input", (e) => {
+    const el = e.target.closest("[data-option]"); if (!el) return;
+    const v = el.value.trim();
+    el.parentElement.querySelector('[data-action="renommer"]').disabled = !v || v === el.dataset.initial;
+  });
+  $("#adm").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+    const b = e.target.id === "n-lib" ? $("#n-ajouter")
+      : e.target.parentElement.querySelector('[data-action="renommer"]:not([disabled]), [data-action="libelle"], [data-action="ajouter"]');
+    if (b) { e.preventDefault(); b.click(); }
+  });
   $("#adm").addEventListener("click", async (e) => {
     const b = e.target.closest("button[data-action]"); if (!b) return;
     const bloc = b.closest("[data-champ]");
     const c = etat.champs.find((x) => x.id === bloc.dataset.champ);
     const action = b.dataset.action, i = Number(b.dataset.i);
+    etat.adminOuvert = c.id;
     if (action === "retirer" || action === "supprimer") {
       const accord = await confirmer(action === "retirer"
         ? { titre: "Retirer ce choix ?", corps: `« ${c.options[i]} » ne sera plus proposé dans la liste « ${c.libelle} ». Les œuvres qui l'utilisent le conservent.`, action: "Retirer le choix" }
@@ -849,10 +1003,12 @@ async function fichiersDejaImportes() {
 }
 
 function vueImport() {
+  etat.gardien = null; etat.modifie = false; etat.retour = null;
+  document.body.classList.remove("barre-visible");
   window.scrollTo(0, 0);
   app.innerHTML = `
-    <div class="entete"><h1>Import en lot</h1><button class="btn lien" id="retour">Retour</button></div>
-    <div class="carte">
+    ${entete("Import en lot")}
+    <div class="carte etroit">
       <p>Sélectionnez plusieurs photos : une fiche « À compléter » est créée par photo, avec le nom du fichier comme titre provisoire.</p>
       <p class="sous">Les photos sont compressées avant l'envoi ; les originaux restent sur l'appareil. Un fichier dont le nom a déjà été importé est ignoré, ce qui permet de reprendre un import interrompu. Gardez cette page ouverte pendant l'import.</p>
       <label class="zone-photo" for="lot" id="zone">Choisir les photos</label>
@@ -903,6 +1059,8 @@ function vueImport() {
     enCours = false; etat.occupe = false; fichiers = []; $("#lot").value = ""; $("#zone").textContent = "Choisir les photos";
   });
 }
+
+window.addEventListener("beforeunload", (e) => { if (etat.modifie || etat.occupe) { e.preventDefault(); e.returnValue = ""; } });
 
 /* ---------- Démarrage ---------- */
 sb.auth.onAuthStateChange((evenement, session) => {
