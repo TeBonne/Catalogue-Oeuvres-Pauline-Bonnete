@@ -177,6 +177,9 @@ const nombre = (v) => { const n = parseFloat(String(v ?? "").replace(",", ".").r
 const texte = (v) => { const t = String(v ?? "").trim(); return t === "" ? null : t; };
 const prix = (v) => v == null ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 }).format(v);
 const dims = (o) => (o.hauteur_cm && o.largeur_cm) ? `${String(o.hauteur_cm).replace(".", ",")} × ${String(o.largeur_cm).replace(".", ",")} cm` : "";
+const poids = (octets) => octets == null ? "" : octets < 1048576
+  ? `${Math.max(1, Math.round(octets / 1024))} Ko`
+  : `${(octets / 1048576).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} Mo`;
 const msgErreur = (e) => esc(e?.message || String(e));
 
 /* Redimensionne une photo dans le navigateur : version d'affichage + vignette (JPEG). */
@@ -216,7 +219,7 @@ async function envoyerPhoto(id, fichier) {
     const { error } = await sb.storage.from(BUCKET).upload(chemin, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
     if (error) throw error;
   }
-  return { photo_path, vignette_path };
+  return { photo_path, vignette_path, poids_photo_octets: grand.size, poids_origine_octets: fichier.size };
 }
 
 /* Fenêtre de confirmation : « Annuler » en bouton principal, action dangereuse inactive 2 secondes. */
@@ -522,7 +525,10 @@ async function vueFiche(id) {
       ${champsPerso().map(champPerso).join("")}
       <label for="notes">Notes privées <span class="opt">(acheteur, date de vente… jamais publiées)</span></label>
       <textarea id="notes">${esc(o.notes_privees)}</textarea>
-      ${id && o.fichier_origine ? `<p class="sous">Fichier d'origine : ${esc(o.fichier_origine)}</p>` : ""}
+      ${id ? `<p class="sous">${[
+        o.poids_photo_octets != null ? `Photo en ligne : ${poids(o.poids_photo_octets)}` : "",
+        o.fichier_origine ? `Fichier d'origine : ${esc(o.fichier_origine)}${o.poids_origine_octets != null ? ` (${poids(o.poids_origine_octets)})` : ""}` : ""
+      ].filter(Boolean).join("<br>")}</p>` : ""}
       <div style="display:grid;gap:10px;margin-top:20px">
         <button class="btn plein large" type="submit" id="valider">Enregistrer</button>
         ${id ? `<button class="btn danger large" type="button" id="supprimer">Supprimer cette œuvre…</button>` : ""}
@@ -565,7 +571,7 @@ async function vueFiche(id) {
       const oid = id || crypto.randomUUID();
       const chemins = fichier ? await envoyerPhoto(oid, fichier) : {};
       const req = id
-        ? sb.from("oeuvres").update({ ...valeurs, ...chemins }).eq("id", id)
+        ? sb.from("oeuvres").update({ ...valeurs, ...chemins, ...(fichier ? { fichier_origine: fichier.name } : {}) }).eq("id", id)
         : sb.from("oeuvres").insert({ id: oid, ...valeurs, ...chemins, fichier_origine: fichier.name });
       const { error } = await req;
       if (error) throw error;
