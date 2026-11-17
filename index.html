@@ -779,6 +779,10 @@ async function vueFiche(id, origine) {
 
         ${perso_html ? `<h2 class="section">Informations complémentaires</h2>${perso_html}` : ""}
 
+        <h2 class="section">Description</h2>
+        <label for="description">Description</label>
+        <textarea id="description" style="min-height:120px">${esc(o.description)}</textarea>
+
         <h2 class="section">Suivi interne</h2>
         <label for="notes">Notes privées</label>
         <textarea id="notes" aria-describedby="notes-aide">${esc(o.notes_privees)}</textarea>
@@ -852,6 +856,7 @@ async function vueFiche(id, origine) {
       nature: texte($("#nature").value), serie: texte($("#serie").value),
       hauteur_cm: h, largeur_cm: l, annee: a, prix_eur: p, prix_masque: $("#prix_masque").checked,
       encadre: $("#encadre").value === "" ? null : $("#encadre").value === "oui",
+      description: texte($("#description").value),
       notes_privees: texte($("#notes").value), champs_perso: cp
     };
     const bouton = $("#valider"); bouton.disabled = true; bouton.textContent = "Enregistrement…"; alerte("");
