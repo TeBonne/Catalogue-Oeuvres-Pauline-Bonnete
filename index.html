@@ -120,6 +120,28 @@
   .bandeau button { color: #fff; background: none; border: 1px solid rgba(255,255,255,.5); border-radius: 8px; min-height: 40px; padding: 0 14px; font-weight: 600; cursor: pointer; }
   .corb .tete { display: flex; gap: 14px; align-items: center; }
   .corb .rang .btn { flex: 1; }
+  #lateral { display: none; }
+  @media (min-width: 900px) {
+    #lateral:not([hidden]) {
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; width: 256px; z-index: 5;
+      background: #fff; border-right: 1px solid var(--trait); padding: 22px 12px 16px; overflow-y: auto;
+    }
+    body.avec-lateral { padding-left: 256px; }
+    body.avec-lateral .barre-bas { left: 256px; }
+    body.avec-lateral #puces, body.avec-lateral .actions-entete { display: none; }
+  }
+  .lat-marque { font: 600 1.15rem/1.2 Georgia, "Times New Roman", serif; padding: 0 10px; }
+  .lat-sous { color: var(--doux); font-size: .82rem; padding: 2px 10px 14px; }
+  .lat-titre { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--doux); padding: 18px 10px 6px; }
+  .lat-lien {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 40px;
+    padding: 0 10px; border: 0; border-radius: 8px; background: none; cursor: pointer; text-align: left; font-size: .93rem;
+  }
+  .lat-lien:hover:not([disabled]) { background: var(--fond); }
+  .lat-lien[aria-current="page"] { background: #f3e4dd; color: var(--accent-fonce); font-weight: 600; }
+  .lat-lien[disabled] { color: var(--doux); cursor: default; }
+  .lat-lien .n { flex: none; font-size: .8rem; font-weight: 400; color: var(--doux); }
+  .lat-bas { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--trait); }
   .vide { text-align: center; color: var(--doux); padding: 40px 10px; }
   .barre-bas {
     position: fixed; left: 0; right: 0; bottom: 0; background: rgba(246,242,236,.96);
@@ -141,6 +163,7 @@
 </style>
 </head>
 <body>
+<aside id="lateral" aria-label="Navigation" hidden></aside>
 <div id="app" class="page"><p class="sous">Chargement…</p></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -167,7 +190,8 @@ let vueMemorisee = "grille";
 try { vueMemorisee = localStorage.getItem("catalogue-vue") === "liste" ? "liste" : "grille"; } catch (_) {}
 const LIBELLES_DEFAUT = { technique: "Technique", support: "Support", nature: "Nature" };
 const TYPES = { texte: "Texte", nombre: "Nombre", liste: "Liste de choix", case: "Case à cocher" };
-const etat = { vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
+const lateral = document.getElementById("lateral");
+const etat = { section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
 
 /* ---------- Utilitaires ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -278,8 +302,40 @@ async function chargerChamps() {
 const champSysteme = (cle) => etat.champs.find((c) => c.systeme && c.cle === cle) || { libelle: LIBELLES_DEFAUT[cle], options: LISTES[cle] };
 const champsPerso = () => etat.champs.filter((c) => !c.systeme);
 
+/* ---------- Barre latérale (écrans larges) ---------- */
+function masquerLateral() { lateral.hidden = true; document.body.classList.remove("avec-lateral"); }
+function majLateral(section) {
+  if (section != null) etat.section = section;
+  const lien = (cle, libelle, n) => `<button class="lat-lien" data-nav="${cle}" ${etat.section === cle ? 'aria-current="page"' : ""}><span>${esc(libelle)}</span>${n == null ? "" : `<span class="n">${n}</span>`}</button>`;
+  lateral.innerHTML = `
+    <div class="lat-marque">Catalogue des œuvres</div>
+    <div class="lat-sous">Pauline Bonneté</div>
+    ${etat.admin ? lien("admin", "Administration") : ""}
+    <div class="lat-titre">Œuvres</div>
+    ${lien("liste:", "Toutes les œuvres", etat.total_general)}
+    ${lien("liste:a_completer", "Œuvres à compléter", etat.comptes.a_completer ?? "")}
+    ${lien("liste:disponible", "Disponible", etat.comptes.disponible ?? "")}
+    ${lien("liste:reserve", "Réservé", etat.comptes.reserve ?? "")}
+    ${lien("liste:vendu", "Vendu", etat.comptes.vendu ?? "")}
+    ${lien("liste:pas_a_vendre", "Pas à vendre", etat.comptes.pas_a_vendre ?? "")}
+    <div class="lat-titre">Documents</div>
+    <button class="lat-lien" disabled><span>Certificats d'authentification</span><span class="n">à venir</span></button>
+    ${etat.admin ? `<div class="lat-titre">Maintenance</div>${lien("corbeille", "Corbeille", etat.enCorbeille)}` : ""}
+    <div class="lat-bas"><button class="lat-lien" data-nav="sortir"><span>Déconnexion</span></button></div>`;
+  lateral.hidden = false; document.body.classList.add("avec-lateral");
+}
+lateral.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-nav]"); if (!b || etat.occupe) return;
+  const nav = b.dataset.nav;
+  if (nav === "admin") vueAdmin();
+  else if (nav === "corbeille") vueCorbeille();
+  else if (nav === "sortir") sb.auth.signOut();
+  else { etat.statut = nav.slice(6); vueListe(); }
+});
+
 /* ---------- Connexion ---------- */
 function vueConnexion(message = "", type = "erreur") {
+  masquerLateral();
   app.innerHTML = `
     <div class="carte" style="max-width:420px;margin:8vh auto 0">
       <h1>Catalogue des œuvres</h1>
@@ -312,6 +368,7 @@ function vueConnexion(message = "", type = "erreur") {
 }
 
 function vueNonAutorise(email) {
+  masquerLateral();
   app.innerHTML = `
     <div class="carte" style="max-width:420px;margin:8vh auto 0">
       <h1>Accès non autorisé</h1>
@@ -349,6 +406,10 @@ async function chargerComptes() {
     return s ? r.eq("statut", s) : r;
   }));
   cles.forEach((s, i) => { if (s) etat.comptes[s] = res[i].count ?? 0; else etat.total_general = res[i].count ?? 0; });
+  if (etat.admin) {
+    const { count } = await sb.from("oeuvres").select("id", { count: "exact", head: true }).not("supprime_le", "is", null);
+    etat.enCorbeille = count ?? 0;
+  }
 }
 
 async function chargerPage(reinitialiser) {
@@ -403,11 +464,12 @@ function dessinerGrille() {
 async function rafraichirListe(avecComptes) {
   try {
     await Promise.all([chargerPage(true), avecComptes ? chargerComptes() : null]);
-    dessinerPuces(); dessinerGrille();
+    dessinerPuces(); dessinerGrille(); majLateral();
   } catch (e) { $("#grille").innerHTML = `<div class="message erreur" style="grid-column:1/-1">${msgErreur(e)}</div>`; }
 }
 
 function vueListe() {
+  majLateral("liste:" + etat.statut);
   app.innerHTML = `
     <div class="entete">
       <div><h1>Catalogue des œuvres</h1><div class="sous" id="resume">Chargement…</div></div>
@@ -428,7 +490,7 @@ function vueListe() {
     </div></div>`;
   let minuterie;
   $("#q").addEventListener("input", (e) => { clearTimeout(minuterie); minuterie = setTimeout(() => { etat.q = e.target.value; rafraichirListe(false); }, 300); });
-  $("#puces").addEventListener("click", (e) => { const b = e.target.closest(".puce"); if (!b) return; etat.statut = b.dataset.statut; dessinerPuces(); rafraichirListe(false); });
+  $("#puces").addEventListener("click", (e) => { const b = e.target.closest(".puce"); if (!b) return; etat.statut = b.dataset.statut; dessinerPuces(); majLateral("liste:" + etat.statut); rafraichirListe(false); });
   $("#grille").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) vueFiche(b.dataset.id); });
   $("#bascule").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-vue]"); if (!b) return;
@@ -604,12 +666,14 @@ async function vueFiche(id) {
 /* ---------- Corbeille (administrateur) ---------- */
 async function vueCorbeille(message = "", type = "info") {
   if (!etat.admin) return vueListe();
+  majLateral("corbeille");
   window.scrollTo(0, 0);
   app.innerHTML = `<p class="sous">Chargement…</p>`;
   const { data, error } = await sb.from("oeuvres").select("id,titre,vignette_path,supprime_le")
     .not("supprime_le", "is", null).order("supprime_le", { ascending: false }).limit(1000);
   const items = data || [];
   if (error) { message = msgErreur(error); type = "erreur"; }
+  else { etat.enCorbeille = items.length; majLateral(); }
   const jour = (d) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   app.innerHTML = `
     <div id="corb" class="corb">
@@ -672,6 +736,7 @@ async function vueCorbeille(message = "", type = "info") {
 /* ---------- Espace administrateur ---------- */
 async function vueAdmin(message = "", type = "info") {
   if (!etat.admin) return vueListe();
+  majLateral("admin");
   window.scrollTo(0, 0);
   app.innerHTML = `<p class="sous">Chargement…</p>`;
   try { await chargerChamps(); } catch (e) { message = msgErreur(e); type = "erreur"; }
@@ -809,7 +874,7 @@ function vueImport() {
   });
   $("#lancer").addEventListener("click", async () => {
     if (enCours || !fichiers.length) return;
-    enCours = true; $("#lancer").disabled = true; $("#suivi").hidden = false; $("#journal").innerHTML = "";
+    enCours = true; etat.occupe = true; $("#lancer").disabled = true; $("#suivi").hidden = false; $("#journal").innerHTML = "";
     const maj = (t) => { $("#etatImport").textContent = t; };
     let faits = 0, ignores = 0, erreurs = 0, traites = 0;
     try {
@@ -835,7 +900,7 @@ function vueImport() {
       await Promise.all([suivant(), suivant(), suivant()]);
       maj(`Import terminé : ${faits} importées, ${erreurs} en erreur, ${ignores} déjà présentes (ignorées).`);
     } catch (err) { maj("Import interrompu : " + (err.message || err)); }
-    enCours = false; fichiers = []; $("#lot").value = ""; $("#zone").textContent = "Choisir les photos";
+    enCours = false; etat.occupe = false; fichiers = []; $("#lot").value = ""; $("#zone").textContent = "Choisir les photos";
   });
 }
 
