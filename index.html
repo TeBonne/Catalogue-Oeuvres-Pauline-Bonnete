@@ -77,6 +77,19 @@
   .s-reserve { background: #dfe8f3; color: #274a73; }
   .s-vendu { background: #eadfe9; color: #5d2f59; }
   .s-pas_a_vendre { background: #e9e6e1; color: #4d473f; }
+  .liste { display: flex; flex-direction: column; gap: 8px; }
+  .ligne {
+    display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 8px;
+    border: 1px solid var(--trait); border-radius: var(--rayon); background: #fff; cursor: pointer;
+  }
+  .ligne img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; flex: none; background: #ece6dc; }
+  .ligne .corps { flex: 1; min-width: 0; }
+  .ligne .titre { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ligne .infos { color: var(--doux); font-size: .85rem; }
+  .ligne .droite { flex: none; text-align: right; font-size: .92rem; font-weight: 600; }
+  .ligne .droite .badge { display: block; margin-top: 4px; font-weight: 600; }
+  .bascule { display: flex; justify-content: flex-end; gap: 6px; margin: 0 0 12px; }
+  .bascule .puce { min-height: 36px; }
   .vide { text-align: center; color: var(--doux); padding: 40px 10px; }
   .barre-bas {
     position: fixed; left: 0; right: 0; bottom: 0; background: rgba(246,242,236,.96);
@@ -120,7 +133,9 @@ const LISTES = { // listes fermées, traitées comme le statut
 
 const app = document.getElementById("app");
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
-const etat = { utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
+let vueMemorisee = "grille";
+try { vueMemorisee = localStorage.getItem("catalogue-vue") === "liste" ? "liste" : "grille"; } catch (_) {}
+const etat = { vue: vueMemorisee, utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
 
 /* ---------- Utilitaires ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -246,7 +261,7 @@ async function chargerPage(reinitialiser) {
   if (reinitialiser) { etat.items = []; etat.page = 0; }
   const debut = etat.page * PAGE;
   const { data, count, error } = await filtrer(
-    sb.from("oeuvres").select("id,titre,statut,prix_eur,vignette_path,technique,hauteur_cm,largeur_cm", { count: "exact" })
+    sb.from("oeuvres").select("id,titre,statut,prix_eur,vignette_path,technique,support,annee,hauteur_cm,largeur_cm", { count: "exact" })
   ).order("cree_le", { ascending: false }).order("id").range(debut, debut + PAGE - 1);
   if (error) throw error;
   etat.items.push(...data); etat.total = count ?? etat.items.length; etat.page++;
@@ -260,8 +275,20 @@ function dessinerPuces() {
 
 function dessinerGrille() {
   const zone = $("#grille"); if (!zone) return;
+  zone.className = etat.vue === "liste" ? "liste" : "grille";
+  document.querySelectorAll("#bascule .puce").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.vue === etat.vue)));
   if (!etat.items.length) {
     zone.innerHTML = `<div class="vide" style="grid-column:1/-1">${etat.total_general ? "Aucune œuvre ne correspond à ce filtre." : "Le catalogue est vide. Ajoutez une première œuvre ou lancez un import."}</div>`;
+  } else if (etat.vue === "liste") {
+    zone.innerHTML = etat.items.map((o) => `
+      <button class="ligne" data-id="${o.id}">
+        <img loading="lazy" alt="" src="${esc(urlPhoto(o.vignette_path))}">
+        <div class="corps">
+          <div class="titre">${esc(o.titre)}</div>
+          <div class="infos">${esc([o.technique, o.support, dims(o), o.annee].filter(Boolean).join(" · ") || "Informations à compléter")}</div>
+        </div>
+        <div class="droite">${esc(prix(o.prix_eur))}<span class="badge s-${o.statut}">${esc(STATUTS[o.statut] || o.statut)}</span></div>
+      </button>`).join("");
   } else {
     zone.innerHTML = etat.items.map((o) => `
       <button class="oeuvre" data-id="${o.id}">
@@ -294,6 +321,10 @@ function vueListe() {
     </div>
     <input id="q" type="search" placeholder="Rechercher un titre, une série, une technique…" value="${esc(etat.q)}" aria-label="Rechercher">
     <div class="puces" id="puces"></div>
+    <div class="bascule" id="bascule" role="group" aria-label="Mode d'affichage">
+      <button class="puce" data-vue="grille">Vignettes</button>
+      <button class="puce" data-vue="liste">Liste</button>
+    </div>
     <div class="grille" id="grille"></div>
     <p style="text-align:center;margin-top:16px"><button class="btn" id="plus" hidden></button></p>
     <div class="barre-bas"><div class="contenu">
@@ -303,7 +334,13 @@ function vueListe() {
   let minuterie;
   $("#q").addEventListener("input", (e) => { clearTimeout(minuterie); minuterie = setTimeout(() => { etat.q = e.target.value; rafraichirListe(false); }, 300); });
   $("#puces").addEventListener("click", (e) => { const b = e.target.closest(".puce"); if (!b) return; etat.statut = b.dataset.statut; dessinerPuces(); rafraichirListe(false); });
-  $("#grille").addEventListener("click", (e) => { const b = e.target.closest(".oeuvre"); if (b) vueFiche(b.dataset.id); });
+  $("#grille").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) vueFiche(b.dataset.id); });
+  $("#bascule").addEventListener("click", (e) => {
+    const b = e.target.closest(".puce"); if (!b) return;
+    etat.vue = b.dataset.vue;
+    try { localStorage.setItem("catalogue-vue", etat.vue); } catch (_) {}
+    dessinerGrille();
+  });
   $("#plus").addEventListener("click", async () => { try { await chargerPage(false); dessinerGrille(); } catch (e) { $("#resume").textContent = "Erreur de chargement : " + (e.message || e); } });
   $("#ajouter").addEventListener("click", () => vueFiche(null));
   $("#import").addEventListener("click", vueImport);
