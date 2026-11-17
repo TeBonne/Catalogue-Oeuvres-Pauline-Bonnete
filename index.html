@@ -379,16 +379,21 @@
   .barre-bas .contenu.sel .rappel strong { flex: 1; }
   .barre-bas .contenu.sel .btn.icone-seule, .barre-bas .contenu.sel .btn.discret { flex: none; }
   .barre-bas .contenu.sel .btn { white-space: nowrap; }
-  .contenu.sel .court { display: none; }
-  @media (max-width: 600px) { .contenu.sel .long { display: none; } .contenu.sel .court { display: inline; } }
-  body.sel { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+  .barre-bas .contenu.sel .btn.icone-carree { flex: none; width: 46px; min-height: 46px; border-radius: 12px; }
+  .actions-lot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1 1 100%; }
+  .actions-lot .btn { min-height: 44px; padding: 0 12px; font-size: .92rem; }
+  @media (max-width: 600px) { .contenu.sel .long { display: none; } }
+  body.sel { padding-bottom: calc(210px + env(safe-area-inset-bottom)); }
   .dialogue.large { max-width: 460px; }
   .dialogue .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
   @media (min-width: 900px) {
     .barre-bas .contenu.sel { flex-wrap: nowrap; }
     .barre-bas .contenu.sel .rappel { flex: 1 1 auto; }
-    .barre-bas .contenu.sel > .btn { flex: 0 0 auto; }
-    body.sel { padding-bottom: 110px; }
+    .barre-bas .contenu.sel .rappel { display: contents; }
+    .actions-lot { display: flex; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; order: 1; }
+    .actions-lot .btn { flex: 0 0 auto; padding: 0 16px; }
+    .barre-bas .contenu.sel #sel-corbeille { order: 2; }
+    body.sel { padding-bottom: 130px; }
   }
 
   /* Navigation latérale */
@@ -852,10 +857,12 @@ function vueListe() {
       <div class="rappel">
         <button class="btn icone-seule" id="sel-quitter" aria-label="Quitter la sélection" title="Quitter la sélection">${ICONES.fermer}</button>
         <strong id="sel-compte" aria-live="polite"></strong>
-        <button class="btn discret" id="sel-tout"></button>
+        <button class="btn danger icone-carree" id="sel-corbeille" aria-label="Mettre à la corbeille" title="Mettre à la corbeille">${ICONES.corbeille}</button>
       </div>
-      <button class="btn" id="sel-modifier">Modifier un champ</button>
-      <button class="btn danger" id="sel-corbeille"><span class="long">Mettre à la corbeille</span><span class="court">Corbeille</span></button>
+      <div class="actions-lot">
+        ${["technique", "support", "nature"].map((c) => `<button class="btn" data-lot="${c}">Modifier ${esc(champSysteme(c).libelle)}</button>`).join("")}
+        <button class="btn" data-lot="">Modifier un champ</button>
+      </div>
     </div></div>`;
   let minuterie;
   $("#q").addEventListener("input", (e) => { clearTimeout(minuterie); minuterie = setTimeout(() => { etat.q = e.target.value; rafraichirListe(false); }, 300); });
@@ -872,13 +879,8 @@ function vueListe() {
   });
   $("#sel-entrer").addEventListener("click", () => { etat.selection = new Set(); etat.dernier = null; majSelection(); });
   $("#sel-quitter").addEventListener("click", () => { etat.selection = null; majSelection(); });
-  $("#sel-tout").addEventListener("click", async () => {
-    if (etat.selection.size >= etat.total) { etat.selection = new Set(); return majSelection(); }
-    try { etat.selection = new Set(await idsFiltres()); majSelection(); }
-    catch (e) { bandeau("La sélection a échoué : " + (e.message || e)); }
-  });
   $("#sel-corbeille").addEventListener("click", selectionCorbeille);
-  $("#sel-modifier").addEventListener("click", selectionModifier);
+  app.querySelectorAll("[data-lot]").forEach((b) => b.addEventListener("click", () => selectionModifier(b.dataset.lot || null)));
   $("#bascule").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-vue]"); if (!b) return;
     etat.vue = b.dataset.vue;
@@ -906,21 +908,7 @@ function majSelection() {
   barre.hidden = !actif; app.querySelector(".barre-bas.mobile").hidden = actif; $("#sel-entrer").hidden = actif;
   document.body.classList.toggle("sel", actif);
   $("#sel-compte").innerHTML = n ? `${n} <span class="long">œuvre${n > 1 ? "s" : ""} </span>sélectionnée${n > 1 ? "s" : ""}` : "Touchez les œuvres";
-  $("#sel-modifier").disabled = $("#sel-corbeille").disabled = !n;
-  $("#sel-tout").textContent = n && n >= etat.total ? "Tout désélectionner" : `Tout sélectionner (${etat.total})`;
-  $("#sel-tout").setAttribute("aria-label", n && n >= etat.total ? "Tout désélectionner" : `Sélectionner les ${etat.total} œuvres affichées par ce filtre`);
-  $("#sel-tout").hidden = !etat.total;
-}
-
-async function idsFiltres() {
-  const ids = [];
-  for (let debut = 0; ; debut += 1000) {
-    const { data, error } = await filtrer(sb.from("oeuvres").select("id")).order("id").range(debut, debut + 999);
-    if (error) throw error;
-    ids.push(...data.map((x) => x.id));
-    if (data.length < 1000) break;
-  }
-  return ids;
+  barre.querySelectorAll("[data-lot], #sel-corbeille").forEach((b) => { b.disabled = !n; });
 }
 
 async function parLots(ids, action) {
@@ -948,7 +936,7 @@ async function selectionCorbeille() {
 }
 
 /* Fenêtre « Modifier un champ » : renvoie les colonnes à mettre à jour, ou null si l'utilisateur renonce. */
-function demanderChamp(n) {
+function demanderChamp(n, impose) {
   const listeConfig = (cle) => [["", "Aucune valeur (vider le champ)"], ...champSysteme(cle).options.map((v) => [v, v])];
   const CHAMPS = [
     { cle: "statut", libelle: "Statut", options: () => Object.entries(STATUTS) },
@@ -965,9 +953,9 @@ function demanderChamp(n) {
     const voile = document.createElement("div"); voile.className = "voile";
     voile.innerHTML = `
       <div class="dialogue large" role="dialog" aria-modal="true" aria-labelledby="lot-titre">
-        <h2 id="lot-titre">Modifier un champ pour ${n} œuvre${n > 1 ? "s" : ""}</h2>
-        <label for="lot-champ">Champ à modifier</label>
-        <select id="lot-champ">${CHAMPS.map((c, i) => `<option value="${i}">${esc(c.libelle)}</option>`).join("")}</select>
+        <h2 id="lot-titre">${impose ? `Modifier « ${esc(CHAMPS.find((c) => c.cle === impose).libelle)} »` : "Modifier un champ"} pour ${n} œuvre${n > 1 ? "s" : ""}</h2>
+        <div ${impose ? "hidden" : ""}><label for="lot-champ">Champ à modifier</label>
+        <select id="lot-champ">${CHAMPS.map((c, i) => `<option value="${i}" ${c.cle === impose ? "selected" : ""}>${esc(c.libelle)}</option>`).join("")}</select></div>
         <label for="lot-valeur">Nouvelle valeur</label>
         <div id="lot-zone"></div>
         <p class="aide" id="lot-aide"></p>
@@ -1019,13 +1007,13 @@ function demanderChamp(n) {
       catch (err) { q("#lot-erreur").innerHTML = `<div class="message erreur">${msgErreur(err)}</div>`; q("#lot-valeur").setAttribute("aria-invalid", "true"); q("#lot-valeur").focus(); }
     });
     dessinerValeur();
-    q("#lot-champ").focus();
+    (impose ? q("#lot-valeur") : q("#lot-champ")).focus();
   });
 }
 
-async function selectionModifier() {
+async function selectionModifier(impose) {
   const ids = [...etat.selection], n = ids.length, pl = n > 1 ? "s" : "";
-  const maj = await demanderChamp(n);
+  const maj = await demanderChamp(n, impose);
   if (!maj) return;
   const colonnes = ["id", ...Object.keys(maj)].join(",");
   const avant = [];
