@@ -103,6 +103,23 @@
   .rang { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
   .rang input { flex: 1; min-width: 120px; }
   .rang .btn { flex: none; padding: 0 12px; }
+  .voile {
+    position: fixed; inset: 0; z-index: 30; background: rgba(35,32,28,.6); padding: 16px;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  @media (min-width: 600px) { .voile { align-items: center; } }
+  .dialogue { background: #fff; border-radius: 16px; padding: 20px; width: 100%; max-width: 420px; margin-bottom: env(safe-area-inset-bottom); }
+  .dialogue .tete { display: flex; gap: 14px; align-items: center; }
+  .dialogue img, .corb img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; flex: none; background: #ece6dc; }
+  .dialogue h2 { margin: 0; }
+  .bandeau {
+    position: fixed; left: 16px; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 20;
+    max-width: 560px; margin: 0 auto; background: var(--encre); color: #fff; border-radius: 12px; padding: 8px 8px 8px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: .95rem;
+  }
+  .bandeau button { color: #fff; background: none; border: 1px solid rgba(255,255,255,.5); border-radius: 8px; min-height: 40px; padding: 0 14px; font-weight: 600; cursor: pointer; }
+  .corb .tete { display: flex; gap: 14px; align-items: center; }
+  .corb .rang .btn { flex: 1; }
   .vide { text-align: center; color: var(--doux); padding: 40px 10px; }
   .barre-bas {
     position: fixed; left: 0; right: 0; bottom: 0; background: rgba(246,242,236,.96);
@@ -202,6 +219,53 @@ async function envoyerPhoto(id, fichier) {
   return { photo_path, vignette_path };
 }
 
+/* Fenêtre de confirmation : « Annuler » en bouton principal, action dangereuse inactive 2 secondes. */
+function confirmer({ titre, corps, vignette, action }) {
+  return new Promise((resoudre) => {
+    const voile = document.createElement("div"); voile.className = "voile";
+    voile.innerHTML = `
+      <div class="dialogue" role="alertdialog" aria-modal="true" aria-labelledby="dlg-titre" aria-describedby="dlg-corps">
+        <div class="tete">${vignette ? `<img alt="" src="${esc(vignette)}">` : ""}<h2 id="dlg-titre">${esc(titre)}</h2></div>
+        <p id="dlg-corps">${esc(corps)}</p>
+        <div style="display:grid;gap:10px">
+          <button class="btn plein large" data-r="non">Annuler</button>
+          <button class="btn danger large" data-r="oui" disabled>${esc(action)} (2)</button>
+        </div>
+      </div>`;
+    document.body.append(voile);
+    const oui = voile.querySelector('[data-r="oui"]');
+    let reste = 2;
+    const minuterie = setInterval(() => {
+      reste--;
+      if (reste > 0) oui.textContent = `${action} (${reste})`;
+      else { clearInterval(minuterie); oui.textContent = action; oui.disabled = false; }
+    }, 1000);
+    const clavier = (e) => { if (e.key === "Escape") fermer(false); };
+    const fermer = (r) => { clearInterval(minuterie); document.removeEventListener("keydown", clavier); voile.remove(); resoudre(r); };
+    document.addEventListener("keydown", clavier);
+    voile.addEventListener("click", (e) => {
+      if (e.target === voile) return fermer(false);
+      const b = e.target.closest("[data-r]"); if (b && !b.disabled) fermer(b.dataset.r === "oui");
+    });
+    voile.querySelector('[data-r="non"]').focus();
+  });
+}
+
+/* Bandeau temporaire avec action d'annulation. */
+function bandeau(message, libelle, action) {
+  document.querySelectorAll(".bandeau").forEach((b) => b.remove());
+  const el = document.createElement("div"); el.className = "bandeau"; el.setAttribute("role", "status");
+  el.innerHTML = `<span>${esc(message)}</span><button type="button">${esc(libelle)}</button>`;
+  document.body.append(el);
+  const fin = setTimeout(() => el.remove(), 10000);
+  el.querySelector("button").addEventListener("click", async () => { clearTimeout(fin); el.remove(); await action(); });
+}
+
+async function effacerPhotos(lignes) {
+  const chemins = lignes.flatMap((l) => [l.photo_path, l.vignette_path]).filter(Boolean);
+  for (let i = 0; i < chemins.length; i += 100) await sb.storage.from(BUCKET).remove(chemins.slice(i, i + 100));
+}
+
 /* Configuration des champs (gérée depuis l'espace administrateur) */
 async function chargerChamps() {
   const { data, error } = await sb.from("champs").select("*").order("ordre").order("cree_le");
@@ -268,6 +332,7 @@ async function demarrer(session) {
 
 /* ---------- Liste ---------- */
 function filtrer(req) {
+  req = req.is("supprime_le", null);
   if (etat.statut) req = req.eq("statut", etat.statut);
   const q = etat.q.replace(/[,()%*\\"]/g, " ").trim();
   if (q) req = req.or(["titre", "serie", "technique", "support"].map((c) => `${c}.ilike."%${q}%"`).join(","));
@@ -277,7 +342,7 @@ function filtrer(req) {
 async function chargerComptes() {
   const cles = ["", ...Object.keys(STATUTS)];
   const res = await Promise.all(cles.map((s) => {
-    let r = sb.from("oeuvres").select("id", { count: "exact", head: true });
+    let r = sb.from("oeuvres").select("id", { count: "exact", head: true }).is("supprime_le", null);
     return s ? r.eq("statut", s) : r;
   }));
   cles.forEach((s, i) => { if (s) etat.comptes[s] = res[i].count ?? 0; else etat.total_general = res[i].count ?? 0; });
@@ -379,7 +444,7 @@ function vueListe() {
 /* ---------- Fiche (ajout / modification) ---------- */
 async function suggestions() {
   const listes = { serie: new Set() };
-  const { data } = await sb.from("oeuvres").select("serie").not("serie", "is", null).limit(1000);
+  const { data } = await sb.from("oeuvres").select("serie").not("serie", "is", null).is("supprime_le", null).limit(1000);
   (data || []).forEach((o) => Object.keys(listes).forEach((c) => { if (o[c]) listes[c].add(o[c]); }));
   return listes;
 }
@@ -460,7 +525,7 @@ async function vueFiche(id) {
       ${id && o.fichier_origine ? `<p class="sous">Fichier d'origine : ${esc(o.fichier_origine)}</p>` : ""}
       <div style="display:grid;gap:10px;margin-top:20px">
         <button class="btn plein large" type="submit" id="valider">Enregistrer</button>
-        ${id ? `<button class="btn danger large" type="button" id="supprimer">Supprimer cette œuvre</button>` : ""}
+        ${id ? `<button class="btn danger large" type="button" id="supprimer">Supprimer cette œuvre…</button>` : ""}
       </div>
     </form>`;
   $("#retour").addEventListener("click", vueListe);
@@ -510,16 +575,92 @@ async function vueFiche(id) {
   });
 
   if (id) {
-    const b = $("#supprimer"); let arme = false;
+    const b = $("#supprimer");
     b.addEventListener("click", async () => {
-      if (!arme) { arme = true; b.textContent = "Confirmer la suppression définitive"; setTimeout(() => { if (b.isConnected) { arme = false; b.textContent = "Supprimer cette œuvre"; } }, 5000); return; }
+      const accord = await confirmer({
+        titre: "Supprimer cette œuvre ?",
+        corps: `« ${o.titre} » sera retirée du catalogue et placée dans la corbeille. Un administrateur pourra la restaurer.`,
+        vignette: urlPhoto(o.vignette_path), action: "Mettre à la corbeille"
+      });
+      if (!accord) return;
       b.disabled = true;
-      const { error } = await sb.from("oeuvres").delete().eq("id", id);
-      if (error) { b.disabled = false; return alerte(msgErreur(error)); }
-      await sb.storage.from(BUCKET).remove([o.photo_path, o.vignette_path]);
+      const { data, error } = await sb.from("oeuvres").update({ supprime_le: new Date().toISOString() }).eq("id", id).select("id");
+      if (error || !data.length) { b.disabled = false; return alerte(error ? msgErreur(error) : "Suppression refusée."); }
       vueListe();
+      bandeau("Œuvre placée dans la corbeille", "Annuler", async () => {
+        await sb.from("oeuvres").update({ supprime_le: null }).eq("id", id);
+        vueListe();
+      });
     });
   }
+}
+
+/* ---------- Corbeille (administrateur) ---------- */
+async function vueCorbeille(message = "", type = "info") {
+  if (!etat.admin) return vueListe();
+  window.scrollTo(0, 0);
+  app.innerHTML = `<p class="sous">Chargement…</p>`;
+  const { data, error } = await sb.from("oeuvres").select("id,titre,vignette_path,supprime_le")
+    .not("supprime_le", "is", null).order("supprime_le", { ascending: false }).limit(1000);
+  const items = data || [];
+  if (error) { message = msgErreur(error); type = "erreur"; }
+  const jour = (d) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  app.innerHTML = `
+    <div id="corb" class="corb">
+      <div class="entete"><h1>Corbeille</h1><button class="btn lien" id="retour">Retour</button></div>
+      <p class="sous">Les œuvres supprimées restent ici tant qu'un administrateur ne les efface pas définitivement.</p>
+      <div id="alerte">${message ? `<div class="message ${type}">${message}</div>` : ""}</div>
+      ${items.map((o) => `
+        <section class="carte bloc" data-id="${o.id}">
+          <div class="tete"><img loading="lazy" alt="" src="${esc(urlPhoto(o.vignette_path))}">
+            <div><strong>${esc(o.titre)}</strong><div class="sous">Supprimée le ${esc(jour(o.supprime_le))}</div></div></div>
+          <div class="rang"><button class="btn" data-action="restaurer">Restaurer</button><button class="btn danger" data-action="effacer">Supprimer définitivement</button></div>
+        </section>`).join("") || `<div class="vide">La corbeille est vide.</div>`}
+      ${items.length ? `<button class="btn danger large" id="vider" style="margin-top:8px">Vider la corbeille (${items.length})</button>` : ""}
+    </div>`;
+  $("#retour").addEventListener("click", () => vueAdmin());
+  const erreur = (m) => { $("#alerte").innerHTML = `<div class="message erreur">${m}</div>`; window.scrollTo(0, 0); };
+
+  $("#corb").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-action]"); if (!b) return;
+    const o = items.find((x) => x.id === b.closest("[data-id]").dataset.id);
+    try {
+      if (b.dataset.action === "restaurer") {
+        b.disabled = true;
+        const res = await sb.from("oeuvres").update({ supprime_le: null }).eq("id", o.id).select("id");
+        if (res.error) throw res.error;
+        return vueCorbeille(`« ${esc(o.titre)} » a été restaurée dans le catalogue.`);
+      }
+      const accord = await confirmer({
+        titre: "Supprimer définitivement ?",
+        corps: `« ${o.titre} » et ses photos seront effacées. Cette action est irréversible.`,
+        vignette: urlPhoto(o.vignette_path), action: "Supprimer définitivement"
+      });
+      if (!accord) return;
+      b.disabled = true;
+      const res = await sb.from("oeuvres").delete().eq("id", o.id).select("photo_path,vignette_path");
+      if (res.error) throw res.error;
+      if (!res.data.length) throw new Error("Suppression refusée : droits insuffisants.");
+      await effacerPhotos(res.data);
+      vueCorbeille(`« ${esc(o.titre)} » a été supprimée définitivement.`);
+    } catch (err) { b.disabled = false; erreur(msgErreur(err)); }
+  });
+
+  if (items.length) $("#vider").addEventListener("click", async () => {
+    const accord = await confirmer({
+      titre: "Vider la corbeille ?",
+      corps: `${items.length} œuvre${items.length > 1 ? "s" : ""} et leurs photos seront effacées. Cette action est irréversible.`,
+      action: "Tout supprimer définitivement"
+    });
+    if (!accord) return;
+    $("#vider").disabled = true;
+    try {
+      const res = await sb.from("oeuvres").delete().not("supprime_le", "is", null).select("photo_path,vignette_path");
+      if (res.error) throw res.error;
+      await effacerPhotos(res.data);
+      vueCorbeille(`Corbeille vidée : ${res.data.length} œuvre${res.data.length > 1 ? "s" : ""} supprimée${res.data.length > 1 ? "s" : ""} définitivement.`);
+    } catch (err) { $("#vider").disabled = false; erreur(msgErreur(err)); }
+  });
 }
 
 /* ---------- Espace administrateur ---------- */
@@ -528,6 +669,7 @@ async function vueAdmin(message = "", type = "info") {
   window.scrollTo(0, 0);
   app.innerHTML = `<p class="sous">Chargement…</p>`;
   try { await chargerChamps(); } catch (e) { message = msgErreur(e); type = "erreur"; }
+  const { count: enCorbeille } = await sb.from("oeuvres").select("id", { count: "exact", head: true }).not("supprime_le", "is", null);
   const carte = (c) => `
     <section class="carte bloc" data-champ="${c.id}">
       <div class="sous">${c.systeme ? "Champ d'origine" : "Champ supplémentaire"} · ${TYPES[c.type]}</div>
@@ -547,6 +689,12 @@ async function vueAdmin(message = "", type = "info") {
       <div class="entete"><h1>Administration</h1><button class="btn lien" id="retour">Retour</button></div>
       <p class="sous">Champs et listes de choix des fiches. Les modifications s'appliquent à toutes les œuvres.</p>
       <div id="alerte">${message ? `<div class="message ${type}">${message}</div>` : ""}</div>
+      <section class="carte bloc">
+        <h2>Corbeille</h2>
+        <p class="sous">${enCorbeille ? `${enCorbeille} œuvre${enCorbeille > 1 ? "s" : ""} supprimée${enCorbeille > 1 ? "s" : ""}, à restaurer ou à effacer définitivement.` : "Aucune œuvre dans la corbeille."}</p>
+        <button class="btn large" id="corbeille">Ouvrir la corbeille</button>
+      </section>
+      <h2 style="margin-top:22px">Champs des fiches</h2>
       ${etat.champs.map(carte).join("")}
       <section class="carte bloc">
         <h2>Ajouter un champ</h2>
@@ -559,6 +707,7 @@ async function vueAdmin(message = "", type = "info") {
       </section>
     </div>`;
   $("#retour").addEventListener("click", vueListe);
+  $("#corbeille").addEventListener("click", () => vueCorbeille());
   const erreur = (m) => { $("#alerte").innerHTML = `<div class="message erreur">${m}</div>`; window.scrollTo(0, 0); };
   const verifier = (res) => { if (res.error) throw res.error; if (res.data && !res.data.length) throw new Error("Modification refusée : droits insuffisants."); };
 
@@ -577,10 +726,11 @@ async function vueAdmin(message = "", type = "info") {
     const bloc = b.closest("[data-champ]");
     const c = etat.champs.find((x) => x.id === bloc.dataset.champ);
     const action = b.dataset.action, i = Number(b.dataset.i);
-    if ((action === "retirer" || action === "supprimer") && !b.dataset.arme) {
-      b.dataset.arme = "1"; b.textContent = "Confirmer";
-      setTimeout(() => { if (b.isConnected) { delete b.dataset.arme; b.textContent = action === "retirer" ? "Retirer" : "Supprimer ce champ"; } }, 5000);
-      return;
+    if (action === "retirer" || action === "supprimer") {
+      const accord = await confirmer(action === "retirer"
+        ? { titre: "Retirer ce choix ?", corps: `« ${c.options[i]} » ne sera plus proposé dans la liste « ${c.libelle} ». Les œuvres qui l'utilisent le conservent.`, action: "Retirer le choix" }
+        : { titre: "Supprimer ce champ ?", corps: `Le champ « ${c.libelle} » disparaîtra de toutes les fiches.`, action: "Supprimer le champ" });
+      if (!accord) return;
     }
     b.disabled = true;
     try {
