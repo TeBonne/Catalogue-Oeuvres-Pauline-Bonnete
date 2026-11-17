@@ -187,7 +187,7 @@ function vueConnexion(message = "", type = "erreur") {
   $("#f").addEventListener("submit", async (e) => {
     e.preventDefault();
     const { error } = await sb.auth.signInWithPassword(lire());
-    if (error) vueConnexion(error.message === "Invalid login credentials" ? "E-mail ou mot de passe incorrect." : error.message === "Email not confirmed" ? "Adresse non confirmée : cliquez d'abord sur le lien reçu par e-mail." : msgErreur(error));
+    if (error) vueConnexion(error.message === "Invalid login credentials" ? "E-mail ou mot de passe incorrect. Si vous n'avez pas encore de compte, saisissez votre adresse et un mot de passe, puis utilisez le bouton « Créer mon compte »." : error.message === "Email not confirmed" ? "Adresse non confirmée : cliquez d'abord sur le lien reçu par e-mail." : msgErreur(error));
   });
   $("#creer").addEventListener("click", async () => {
     if (!$("#f").reportValidity()) return;
