@@ -210,6 +210,52 @@
   .corb .rang .btn { flex: 1 1 auto; }
   .bandeau { min-height: 56px; }
   @media (max-width: 600px) { .corb .rang { flex: 1 1 100%; } }
+  .pastille { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #c0271f; flex: none; }
+  .oeuvre { position: relative; }
+  .oeuvre .pastille { position: absolute; top: 10px; left: 10px; width: 16px; height: 16px; box-shadow: 0 0 0 2px #fff; }
+  .titre .pastille { margin-right: 8px; }
+  .bloc-vente { margin-top: 14px; padding: 14px; border-radius: 10px; background: #faf3ef; border: 1px solid #ecd9cf; }
+  .bloc-vente .deux label { margin-top: 0; }
+  .tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 14px; }
+  .tuile { background: #fff; border: 1px solid var(--trait); border-radius: var(--rayon); padding: 14px 16px; }
+  .tuile .v { font: 600 1.5rem/1.2 Georgia, "Times New Roman", serif; }
+  .tuile .l { color: var(--doux); font-size: .85rem; margin-top: 2px; }
+  .commandes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .commandes select { width: auto; min-height: 42px; padding: 8px 12px; }
+  .graphe { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; }
+  .graphe .ordonnees { display: flex; flex-direction: column; justify-content: space-between; height: 220px; text-align: right; color: var(--doux); font-size: .72rem; line-height: 1; }
+  .graphe .ordonnees span:first-child { transform: translateY(-50%); }
+  .graphe .ordonnees span:last-child { transform: translateY(50%); }
+  .graphe .zone { position: relative; display: flex; align-items: flex-end; height: 220px; border-bottom: 1px solid #cfc5b6; }
+  .graphe .trait { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--trait); pointer-events: none; }
+  .graphe .col {
+    position: relative; flex: 1 1 0; min-width: 0; height: 100%; padding: 0 1px; border: 0; background: none; cursor: pointer;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .graphe .barre { width: 100%; max-width: 24px; background: var(--accent); border-radius: 4px 4px 0 0; }
+  .graphe .col:hover .barre, .graphe .col:focus-visible .barre { background: var(--accent-fonce); }
+  .graphe.filtre .col[aria-pressed="false"] .barre { opacity: .4; }
+  .graphe .col:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+  .graphe .abscisses { grid-column: 2; display: flex; padding-top: 6px; color: var(--doux); font-size: .72rem; }
+  .graphe .abscisses span { flex: 1 1 0; min-width: 0; text-align: center; white-space: nowrap; }
+  .graphe .court { display: none; }
+  .infobulle {
+    position: absolute; z-index: 2; transform: translate(-50%, -100%); pointer-events: none; white-space: nowrap;
+    background: var(--encre); color: #fff; border-radius: 8px; padding: 6px 10px; font-size: .8rem; line-height: 1.3;
+  }
+  .infobulle strong { display: block; font-size: .95rem; }
+  .vente { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 10px; border: 0; border-top: 1px solid var(--trait); background: none; cursor: pointer; }
+  .vente:first-child { border-top: 0; }
+  .vente:hover { background: var(--fond); }
+  .vente img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; flex: none; background: #ece6dc; }
+  .vente .corps { flex: 1; min-width: 0; }
+  .vente .titre { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vente .droite { flex: none; text-align: right; }
+  .vente .montant { font-weight: 600; }
+  .manque { color: #8a5a00; font-weight: 600; }
+  .vente .droite .sous, .vente .corps .sous { font-size: .82rem; }
+  @media (max-width: 600px) { .tuiles { grid-template-columns: 1fr 1fr; } .tuile:first-child { grid-column: 1 / -1; } .vente .long { display: none; } .vente { padding: 10px 8px; gap: 10px; } }
+  @media (max-width: 600px) { .graphe .long { display: none; } .graphe .court { display: inline; } .entete h1 { font-size: 1.22rem; } }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   @media (min-width: 900px) {
     .page { max-width: 1100px; padding: 24px 32px; }
@@ -258,7 +304,7 @@ try { vueMemorisee = localStorage.getItem("catalogue-vue") === "liste" ? "liste"
 const LIBELLES_DEFAUT = { technique: "Technique", support: "Support", nature: "Nature" };
 const TYPES = { texte: "Texte", nombre: "Nombre", liste: "Liste de choix", case: "Case à cocher" };
 const lateral = document.getElementById("lateral");
-const etat = { jeton: 0, retour: null, gardien: null, modifie: false, adminOuvert: null, section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
+const etat = { ventes: { grain: "mois", annee: null, periode: null }, jeton: 0, retour: null, gardien: null, modifie: false, adminOuvert: null, section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
 
 /* ---------- Utilitaires ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -276,6 +322,22 @@ const ICONES = {
   corbeille: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>'),
   valider: svg('<path d="M5 12l5 5L20 7"/>')
 };
+ICONES.graphique = svg('<path d="M5 20V11M12 20V4M19 20v-6"/>');
+const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+const euros = (v) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(v);
+const dateFr = (iso) => { const [a, m, j] = String(iso).split("-"); return `${j}/${m}/${a}`; };
+const aujourdhui = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+/* Accepte AAAA-MM-JJ (sélecteur de date) ou JJ/MM/AAAA (saisie au clavier). Renvoie AAAA-MM-JJ, "" si vide, null si invalide. */
+function lireDate(v) {
+  v = String(v ?? "").trim(); if (!v) return "";
+  let m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/), a, mo, j;
+  if (m) [, a, mo, j] = m; else if ((m = v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/))) [, j, mo, a] = m; else return null;
+  a = +a; mo = +mo; j = +j;
+  const d = new Date(a, mo - 1, j);
+  if (d.getFullYear() !== a || d.getMonth() !== mo - 1 || d.getDate() !== j) return null;
+  return `${a}-${String(mo).padStart(2, "0")}-${String(j).padStart(2, "0")}`;
+}
 const entete = (titre) => `<div class="entete"><div class="gauche"><button type="button" class="btn icone-seule" id="retour" aria-label="Retour" title="Retour">${ICONES.retour}</button><h1>${esc(titre)}</h1></div></div>`;
 const dims = (o) => (o.hauteur_cm && o.largeur_cm) ? `${String(o.hauteur_cm).replace(".", ",")} × ${String(o.largeur_cm).replace(".", ",")} cm` : "";
 const poids = (octets) => octets == null ? "" : octets < 1048576
@@ -396,6 +458,7 @@ function majLateral(section) {
     ${lien("liste:reserve", "Réservé", etat.comptes.reserve ?? "")}
     ${lien("liste:vendu", "Vendu", etat.comptes.vendu ?? "")}
     ${lien("liste:pas_a_vendre", "Pas à vendre", etat.comptes.pas_a_vendre ?? "")}
+    ${etat.admin ? `<div class="lat-titre">Suivi</div>${lien("ventes", "Suivi des ventes")}` : ""}
     <div class="lat-titre">Documents</div>
     <button class="lat-lien" disabled><span>Certificats d'authentification</span><span class="n">à venir</span></button>
     ${etat.admin ? `<div class="lat-titre">Maintenance</div>${lien("corbeille", "Corbeille", etat.enCorbeille)}` : ""}
@@ -409,6 +472,7 @@ lateral.addEventListener("click", async (e) => {
   etat.retour = null;
   if (nav === "admin") vueAdmin();
   else if (nav === "corbeille") vueCorbeille();
+  else if (nav === "ventes") vueVentes();
   else if (nav === "sortir") sb.auth.signOut();
   else { etat.statut = nav.slice(6); vueListe(); }
 });
@@ -526,7 +590,7 @@ function dessinerGrille() {
       <button class="ligne" data-id="${o.id}">
         <img loading="lazy" alt="" src="${esc(urlPhoto(o.vignette_path))}">
         <div class="corps">
-          <div class="titre">${esc(o.titre)}</div>
+          <div class="titre">${o.statut === "vendu" ? `<span class="pastille" role="img" aria-label="Œuvre vendue" title="Œuvre vendue"></span>` : ""}${esc(o.titre)}</div>
           <div class="infos">${esc([o.technique, o.support, dims(o), o.annee].filter(Boolean).join(" · ") || "Informations à compléter")}</div>
         </div>
         <div class="droite">${esc(prix(o.prix_eur))}<span class="badge s-${o.statut}">${esc(STATUTS[o.statut] || o.statut)}</span></div>
@@ -534,6 +598,7 @@ function dessinerGrille() {
   } else {
     zone.innerHTML = etat.items.map((o) => `
       <button class="oeuvre" data-id="${o.id}">
+        ${o.statut === "vendu" ? `<span class="pastille" role="img" aria-label="Œuvre vendue" title="Œuvre vendue"></span>` : ""}
         <img loading="lazy" alt="" src="${esc(urlPhoto(o.vignette_path))}">
         <div class="txt">
           <div class="titre">${esc(o.titre)}</div>
@@ -565,6 +630,7 @@ function vueListe() {
     <div class="entete">
       <h1>Catalogue des œuvres</h1>
       <div class="actions-entete">
+        ${etat.admin ? `<button class="btn icone-seule" id="ventes" aria-label="Suivi des ventes" title="Suivi des ventes">${ICONES.graphique}</button>` : ""}
         ${etat.admin ? `<button class="btn icone-seule" id="admin" aria-label="Administration" title="Administration">${ICONES.reglages}</button>` : ""}
         <button class="btn icone-seule" id="sortir" aria-label="Déconnexion" title="Déconnexion">${ICONES.sortir}</button>
       </div>
@@ -600,7 +666,7 @@ function vueListe() {
   });
   $("#plus").addEventListener("click", async () => { try { await chargerPage(false); dessinerGrille(); } catch (e) { $("#resume").textContent = "Erreur de chargement : " + (e.message || e); } });
   app.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => (b.dataset.go === "import" ? vueImport() : vueFiche(null))));
-  if (etat.admin) $("#admin").addEventListener("click", () => vueAdmin());
+  if (etat.admin) { $("#admin").addEventListener("click", () => vueAdmin()); $("#ventes").addEventListener("click", () => vueVentes()); }
   $("#sortir").addEventListener("click", () => sb.auth.signOut());
   if (!retour) window.scrollTo(0, 0);
   rafraichirListe(true, retour ? retour.pages : 1).then(() => { if (retour && $("#grille")) window.scrollTo(0, retour.y); });
@@ -614,7 +680,8 @@ async function suggestions() {
   return listes;
 }
 
-async function vueFiche(id) {
+async function vueFiche(id, origine) {
+  const revenir = () => (origine === "ventes" ? vueVentes() : vueListe());
   etat.retour = id && $("#grille") ? { y: window.scrollY, pages: etat.page } : null;
   etat.gardien = null; etat.modifie = false;
   app.innerHTML = `<p class="sous">Chargement…</p>`;
@@ -678,6 +745,15 @@ async function vueFiche(id) {
           <option value="" ${o.statut ? "" : "selected"} disabled>Choisir…</option>
           ${Object.entries(STATUTS).map(([c, l]) => `<option value="${c}" ${o.statut === c ? "selected" : ""}>${l}</option>`).join("")}
         </select>
+        <div class="bloc-vente" id="bloc-vente" ${o.statut === "vendu" ? "" : "hidden"}>
+          <div class="deux">
+            <div><label for="prix_vendu">Vendu au prix de (€)</label>
+              <input id="prix_vendu" inputmode="decimal" autocomplete="off" value="${esc(String(o.prix_vendu_eur ?? "").replace(".", ","))}"></div>
+            <div><label for="date_vente">Date de la vente</label>
+              <input id="date_vente" type="date" max="${aujourdhui()}" value="${esc(o.date_vente)}"></div>
+          </div>
+          <p class="aide">Le prix réellement encaissé peut différer du prix affiché. Ces deux informations alimentent le suivi des ventes.</p>
+        </div>
 
         <h2 class="section">Caractéristiques</h2>
         <div class="deux">${champChoix("technique")}${champChoix("support")}</div>
@@ -727,7 +803,12 @@ async function vueFiche(id) {
     titre: "Quitter sans enregistrer ?", corps: "Les modifications apportées à cette fiche seront perdues.",
     action: "Quitter sans enregistrer", annuler: "Continuer la saisie", delai: 0
   });
-  const quitter = async () => { if (await etat.gardien()) vueListe(); };
+  const quitter = async () => { if (await etat.gardien()) revenir(); };
+  $("#statut").addEventListener("change", (e) => {
+    const vendu = e.target.value === "vendu";
+    $("#bloc-vente").hidden = !vendu;
+    if (vendu && !texte($("#prix_vendu").value)) $("#prix_vendu").value = $("#prix").value; // proposé par défaut : le prix affiché
+  });
   $("#retour").addEventListener("click", quitter);
   $("#annuler").addEventListener("click", quitter);
   $("#photo").addEventListener("change", (e) => {
@@ -750,7 +831,13 @@ async function vueFiche(id) {
     const h = nombre($("#hauteur").value), l = nombre($("#largeur").value), a = nombre($("#annee").value), p = nombre($("#prix").value);
     if ((texte($("#hauteur").value) && !(h > 0)) || (texte($("#largeur").value) && !(l > 0))) return alerte("Les dimensions doivent être des nombres positifs.", texte($("#hauteur").value) && !(h > 0) ? "hauteur" : "largeur");
     if (texte($("#annee").value) && !(Number.isInteger(a) && a >= 1900 && a <= 2100)) return alerte("L'année doit comporter quatre chiffres, par exemple 2024.", "annee");
-    if (texte($("#prix").value) && !(p >= 0)) return alerte("Le prix doit être un nombre, par exemple 450.", "prix");
+    if (texte($("#prix").value) && (p === null || p < 0)) return alerte("Le prix doit être un nombre, par exemple 450.", "prix");
+    const vendu = $("#statut").value === "vendu";
+    const pv = vendu ? nombre($("#prix_vendu").value) : null;
+    const dv = vendu ? lireDate($("#date_vente").value) : "";
+    if (vendu && texte($("#prix_vendu").value) && (pv === null || pv < 0)) return alerte("Le prix de vente doit être un nombre, par exemple 450.", "prix_vendu");
+    if (vendu && ($("#date_vente").validity.badInput || dv === null)) return alerte("La date de la vente n'est pas valide. Format attendu : JJ/MM/AAAA.", "date_vente");
+    if (vendu && dv && dv > aujourdhui()) return alerte("La date de la vente ne peut pas être dans le futur.", "date_vente");
     const cp = { ...(o.champs_perso || {}) };
     for (const c of champsPerso()) {
       const el = document.getElementById("cp-" + c.id); if (!el) continue;
@@ -760,6 +847,7 @@ async function vueFiche(id) {
     }
     const valeurs = {
       titre: texte($("#titre").value) || "Sans titre", statut: $("#statut").value,
+      prix_vendu_eur: pv, date_vente: dv || null,
       technique: texte($("#technique").value), support: texte($("#support").value),
       nature: texte($("#nature").value), serie: texte($("#serie").value),
       hauteur_cm: h, largeur_cm: l, annee: a, prix_eur: p, prix_masque: $("#prix_masque").checked,
@@ -777,7 +865,7 @@ async function vueFiche(id) {
       if (error) throw error;
       if (id && fichier) await sb.storage.from(BUCKET).remove([o.photo_path, o.vignette_path]);
       etat.modifie = false;
-      vueListe();
+      revenir();
       bandeau(id ? "Modifications enregistrées" : "Œuvre ajoutée au catalogue");
     } catch (err) { bouton.disabled = false; bouton.textContent = "Enregistrer"; alerte(msgErreur(err)); }
   });
@@ -802,6 +890,139 @@ async function vueFiche(id) {
       });
     });
   }
+}
+
+/* ---------- Suivi des ventes (administrateur) ---------- */
+async function chargerVentes() {
+  const ventes = [];
+  for (let debut = 0; ; debut += 1000) {
+    const { data, error } = await sb.from("oeuvres").select("id,titre,nature,vignette_path,prix_eur,prix_vendu_eur,date_vente")
+      .eq("statut", "vendu").is("supprime_le", null).order("id").range(debut, debut + 999);
+    if (error) throw error;
+    ventes.push(...data);
+    if (data.length < 1000) break;
+  }
+  return ventes;
+}
+
+async function vueVentes() {
+  if (!etat.admin) return vueListe();
+  majLateral("ventes");
+  window.scrollTo(0, 0);
+  app.innerHTML = `${entete("Suivi des ventes")}<p class="sous">Chargement…</p>`;
+  $("#retour").addEventListener("click", vueListe);
+  let ventes;
+  try { ventes = await chargerVentes(); }
+  catch (e) {
+    app.innerHTML = `${entete("Suivi des ventes")}
+      <div class="message erreur" role="alert">Les ventes n'ont pas pu être chargées : ${msgErreur(e)}</div>
+      <button class="btn" id="reessayer">Réessayer</button>`;
+    $("#retour").addEventListener("click", vueListe);
+    $("#reessayer").addEventListener("click", () => vueVentes());
+    return;
+  }
+  const montant = (v) => (v.prix_vendu_eur == null ? null : Number(v.prix_vendu_eur));
+  const completes = ventes.filter((v) => montant(v) != null && v.date_vente);
+  const incompletes = ventes.length - completes.length;
+  const annees = [...new Set(completes.map((v) => +v.date_vente.slice(0, 4)))].sort((a, b) => a - b);
+  const cfg = etat.ventes;
+  if (!annees.includes(cfg.annee)) cfg.annee = annees[annees.length - 1] ?? new Date().getFullYear();
+  const somme = (l) => l.reduce((t, v) => t + montant(v), 0);
+  const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+  const plafond = (v) => { if (v <= 0) return 100; const p = 10 ** Math.floor(Math.log10(v)); return [1, 2, 2.5, 5, 10].map((k) => k * p).find((x) => x >= v); };
+
+  function dessiner() {
+    const parMois = cfg.grain === "mois";
+    const series = parMois
+      ? MOIS.map((m, i) => ({ cle: `${cfg.annee}-${String(i + 1).padStart(2, "0")}`, long: m, court: m[0].toUpperCase(), nom: `${MOIS_LONGS[i]} ${cfg.annee}` }))
+      : (annees.length ? Array.from({ length: annees[annees.length - 1] - annees[0] + 1 }, (_, i) => annees[0] + i) : [cfg.annee])
+          .map((a) => ({ cle: String(a), long: String(a), court: String(a).slice(2), nom: `Année ${a}` }));
+    series.forEach((s) => { const l = completes.filter((v) => v.date_vente.startsWith(s.cle)); s.total = somme(l); s.n = l.length; });
+    if (cfg.periode && !series.some((s) => s.cle === cfg.periode)) cfg.periode = null;
+    const haut = plafond(Math.max(...series.map((s) => s.total)));
+    const duGraphe = parMois ? completes.filter((v) => v.date_vente.startsWith(String(cfg.annee))) : completes;
+    const liste = ventes.filter((v) => !cfg.periode || (v.date_vente || "").startsWith(cfg.periode))
+      .sort((a, b) => (b.date_vente || "").localeCompare(a.date_vente || "") || a.titre.localeCompare(b.titre, "fr"));
+    const choisie = series.find((s) => s.cle === cfg.periode);
+
+    app.innerHTML = `
+      ${entete("Suivi des ventes")}
+      ${!ventes.length ? `<div class="carte vide">Aucune vente enregistrée pour l'instant.<br>Passez une œuvre au statut « Vendu » pour la voir apparaître ici.</div>` : `
+      <div class="tuiles">
+        <div class="tuile"><div class="v">${esc(euros(somme(completes)))}</div><div class="l">Total des ventes</div></div>
+        <div class="tuile"><div class="v">${ventes.length}</div><div class="l">${ventes.length > 1 ? "Œuvres vendues" : "Œuvre vendue"}</div></div>
+        <div class="tuile"><div class="v">${completes.length ? esc(euros(somme(completes) / completes.length)) : "—"}</div><div class="l">Prix de vente moyen</div></div>
+      </div>
+      ${incompletes ? `<div class="message info" role="status"><strong>${pluriel(incompletes, "vente")} à compléter.</strong> Sans prix de vente ou sans date, ${incompletes > 1 ? "elles ne sont pas comptées" : "elle n'est pas comptée"} dans le total ni dans le graphique. ${incompletes > 1 ? "Elles sont signalées" : "Elle est signalée"} dans la liste ci-dessous.</div>` : ""}
+      <section class="carte bloc">
+        <div class="commandes">
+          <h2 style="margin:0">${parMois ? `Ventes par mois en ${cfg.annee}` : "Ventes par année"}</h2>
+          <div style="display:flex;gap:8px;align-items:center">
+            ${parMois && annees.length > 1 ? `<select id="annee" aria-label="Année affichée">${annees.map((a) => `<option ${a === cfg.annee ? "selected" : ""}>${a}</option>`).join("")}</select>` : ""}
+            <div class="segment" id="grain" role="group" aria-label="Granularité du graphique">
+              <button data-grain="mois" aria-pressed="${parMois}">Mois</button>
+              <button data-grain="annee" aria-pressed="${!parMois}">Année</button>
+            </div>
+          </div>
+        </div>
+        ${!completes.length ? `<p class="sous">Aucune vente complète à représenter : renseignez le prix de vente et la date des œuvres vendues.</p>` : `
+        <p class="sous" style="margin:0 0 18px">${esc(euros(somme(duGraphe)))} pour ${pluriel(duGraphe.length, "vente")}${parMois ? ` en ${cfg.annee}` : ""}. Touchez une barre pour filtrer la liste.</p>
+        <div class="graphe ${cfg.periode ? "filtre" : ""}" id="graphe">
+          <div class="ordonnees" aria-hidden="true"><span>${esc(euros(haut))}</span><span>${esc(euros(haut / 2))}</span><span>0 €</span></div>
+          <div class="zone">
+            <div class="trait" style="top:0"></div><div class="trait" style="top:50%"></div>
+            ${series.map((s, i) => `<button class="col" data-i="${i}" aria-pressed="${s.cle === cfg.periode}" aria-label="${esc(`${s.nom} : ${euros(s.total)}, ${pluriel(s.n, "vente")}`)}"><span class="barre" style="height:${s.total ? Math.max(1.5, (s.total / haut) * 100) : 0}%"></span></button>`).join("")}
+            <div class="infobulle" id="infobulle" hidden></div>
+          </div>
+          <div class="abscisses" aria-hidden="true">${series.map((s) => `<span><span class="long">${esc(s.long)}</span><span class="court">${esc(s.court)}</span></span>`).join("")}</div>
+        </div>`}
+      </section>
+      <section class="carte bloc" style="padding:8px">
+        <div class="commandes" style="padding:10px 10px 0;margin-bottom:6px">
+          <h2 style="margin:0">${choisie ? `Ventes de ${esc(choisie.nom.replace("Année ", "l'année "))}` : "Toutes les ventes"} <span class="sous" style="font-weight:400">(${liste.length})</span></h2>
+          ${choisie ? `<button class="btn" id="tout" style="min-height:40px">Voir toutes les ventes</button>` : ""}
+        </div>
+        <div id="liste-ventes">
+        ${liste.map((v) => {
+          const ecart = montant(v) != null && v.prix_eur != null ? montant(v) - Number(v.prix_eur) : null;
+          return `<button class="vente" data-id="${v.id}">
+            <img loading="lazy" alt="" src="${esc(urlPhoto(v.vignette_path))}">
+            <div class="corps"><div class="titre">${esc(v.titre)}</div>
+              <div class="sous">${v.nature ? `${esc(v.nature)} · ` : ""}${v.date_vente ? `<span class="long">Vendue le </span>${esc(dateFr(v.date_vente))}` : `<span class="manque">Date à compléter</span>`}</div></div>
+            <div class="droite"><div class="montant">${montant(v) != null ? esc(euros(montant(v))) : `<span class="manque">Prix à compléter</span>`}</div>
+              <div class="sous">${v.prix_eur != null ? `Affiché ${esc(euros(Number(v.prix_eur)))}` : "Sans prix affiché"}${ecart ? ` · ${ecart > 0 ? "+" : "−"}${esc(euros(Math.abs(ecart)))}` : ""}</div></div>
+          </button>`;
+        }).join("") || `<p class="sous" style="padding:10px">Aucune vente sur cette période.</p>`}
+        </div>
+      </section>`}`;
+
+    $("#retour").addEventListener("click", vueListe);
+    if (!ventes.length) return;
+    $("#grain").addEventListener("click", (e) => { const b = e.target.closest("[data-grain]"); if (!b || b.dataset.grain === cfg.grain) return; cfg.grain = b.dataset.grain; cfg.periode = null; dessiner(); });
+    if ($("#annee")) $("#annee").addEventListener("change", (e) => { cfg.annee = +e.target.value; cfg.periode = null; dessiner(); });
+    if ($("#tout")) $("#tout").addEventListener("click", () => { cfg.periode = null; dessiner(); });
+    $("#liste-ventes").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) vueFiche(b.dataset.id, "ventes"); });
+    const graphe = $("#graphe"); if (!graphe) return;
+    const bulle = $("#infobulle"), zone = graphe.querySelector(".zone");
+    const montrer = (col) => {
+      const s = series[+col.dataset.i];
+      bulle.textContent = "";
+      const fort = document.createElement("strong"); fort.textContent = euros(s.total);
+      bulle.append(fort, document.createTextNode(`${s.nom} · ${pluriel(s.n, "vente")}`));
+      bulle.hidden = false;
+      const z = zone.getBoundingClientRect(), c = col.getBoundingClientRect(), demi = bulle.offsetWidth / 2;
+      bulle.style.left = Math.min(z.width - demi, Math.max(demi, c.left - z.left + c.width / 2)) + "px";
+      bulle.style.top = Math.max(bulle.offsetHeight, col.querySelector(".barre").getBoundingClientRect().top - z.top - 6) + "px";
+    };
+    zone.querySelectorAll(".col").forEach((col) => {
+      col.addEventListener("pointerenter", () => montrer(col));
+      col.addEventListener("focus", () => montrer(col));
+      col.addEventListener("pointerleave", () => { bulle.hidden = true; });
+      col.addEventListener("blur", () => { bulle.hidden = true; });
+      col.addEventListener("click", () => { const s = series[+col.dataset.i]; cfg.periode = cfg.periode === s.cle ? null : s.cle; dessiner(); });
+    });
+  }
+  dessiner();
 }
 
 /* ---------- Corbeille (administrateur) ---------- */
