@@ -200,8 +200,10 @@
   [aria-invalid="true"] { border-color: var(--alerte); background: #fff8f7; }
   .champ-court { max-width: 240px; }
   .zone-danger { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--trait); }
-  .actions-fiche { display: flex; flex-wrap: wrap; gap: 10px; }
-  @media (max-width: 600px) { .actions-fiche .btn { flex: 1 1 100%; } }
+  .barre-bas .contenu.fin .outil, .barre-bas .contenu.fin #annuler { flex: 0 0 auto; }
+  .barre-bas .contenu.fin .espace { display: none; }
+  .btn.outil svg { width: 20px; height: 20px; }
+  @media (max-width: 899px) { .btn.outil { width: 48px; padding: 0; } .btn.outil .long { display: none; } }
   .rang.option { flex-wrap: nowrap; }
   .rang.option input { min-width: 0; }
   details.champ > summary {
@@ -275,6 +277,8 @@
     .barre-bas .contenu, .barre-bas .message { max-width: 1036px; }
     .barre-bas .contenu.fin { justify-content: flex-end; }
     .barre-bas .contenu.fin .btn { flex: 0 0 auto; min-width: 170px; }
+    .barre-bas .contenu.fin .btn.outil { min-width: 0; }
+    .barre-bas .contenu.fin .espace { display: block; flex: 1; }
     .fiche { grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); align-items: start; gap: 20px; }
     .colonne-photo { position: sticky; top: 24px; }
     .fiche .apercu { max-height: 60vh; }
@@ -312,6 +316,7 @@
   .btn.plein:active:not([disabled]) { transform: translateY(0) scale(.97); box-shadow: 0 2px 6px -4px rgba(50,71,214,.6); }
   .btn.plein svg { transition: transform .35s var(--ressort); }
   .btn.plein:hover svg { transform: rotate(90deg); }
+  .btn.plein.outil:hover svg { transform: none; }
   .btn.danger:hover:not([disabled]) { background: #fdf3f0; border-color: var(--alerte); }
   .btn.icone-seule, .btn.icone-carree { padding: 0; }
   .btn.icone-carree { border-radius: 12px; }
@@ -1168,15 +1173,14 @@ async function vueFiche(id, origine) {
         <textarea id="notes" aria-describedby="notes-aide">${esc(o.notes_privees)}</textarea>
         <p class="aide" id="notes-aide">Acheteur, date de vente… Ces notes ne sont jamais publiées.</p>
 
-        ${id ? `<div class="zone-danger actions-fiche">
-          ${etat.admin ? `<button class="btn plein" type="button" id="certificat">Générer le certificat d'authenticité</button>` : ""}
-          <button class="btn danger" type="button" id="supprimer">Supprimer</button>
-        </div>` : ""}
       </div>
     </form>
     <div class="barre-bas">
       <div id="alerte" role="alert"></div>
       <div class="contenu fin">
+        ${id && etat.admin ? `<button class="btn plein outil" type="button" id="certificat" aria-label="Générer le certificat d'authenticité" title="Générer le certificat d'authenticité">${ICONES.document}<span class="long">Générer le certificat d'authenticité</span></button>` : ""}
+        ${id ? `<button class="btn danger outil" type="button" id="supprimer" aria-label="Supprimer" title="Supprimer">${ICONES.corbeille}<span class="long">Supprimer</span></button>` : ""}
+        <span class="espace"></span>
         <button class="btn" type="button" id="annuler">Annuler</button>
         <button class="btn plein" type="submit" form="f" id="valider">Enregistrer</button>
       </div>
