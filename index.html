@@ -317,6 +317,9 @@
   .btn.plein svg { transition: transform .35s var(--ressort); }
   .btn.plein:hover svg { transform: rotate(90deg); }
   .btn.plein.outil:hover svg { transform: none; }
+  .btn.plein.vert { background: #1f7a46; border-color: #1f7a46; box-shadow: 0 1px 0 rgba(255,255,255,.22) inset, 0 6px 14px -8px rgba(31,122,70,.7); }
+  .btn.plein.vert:hover:not([disabled]) { background: #17603a; border-color: #17603a; box-shadow: 0 1px 0 rgba(255,255,255,.22) inset, 0 12px 22px -10px rgba(31,122,70,.75); }
+  .btn.plein.vert:active:not([disabled]) { box-shadow: 0 2px 6px -4px rgba(31,122,70,.6); }
   .btn.danger:hover:not([disabled]) { background: #fdf3f0; border-color: var(--alerte); }
   .btn.icone-seule, .btn.icone-carree { padding: 0; }
   .btn.icone-carree { border-radius: 12px; }
@@ -1178,7 +1181,7 @@ async function vueFiche(id, origine) {
     <div class="barre-bas">
       <div id="alerte" role="alert"></div>
       <div class="contenu fin">
-        ${id && etat.admin ? `<button class="btn plein outil" type="button" id="certificat" aria-label="Générer le certificat d'authenticité" title="Générer le certificat d'authenticité">${ICONES.document}<span class="long">Générer le certificat d'authenticité</span></button>` : ""}
+        ${id && etat.admin ? `<button class="btn plein vert outil" type="button" id="certificat" aria-label="Générer le certificat d'authenticité" title="Générer le certificat d'authenticité">${ICONES.document}<span class="long">Générer le certificat d'authenticité</span></button>` : ""}
         ${id ? `<button class="btn danger outil" type="button" id="supprimer" aria-label="Supprimer" title="Supprimer">${ICONES.corbeille}<span class="long">Supprimer</span></button>` : ""}
         <span class="espace"></span>
         <button class="btn" type="button" id="annuler">Annuler</button>
