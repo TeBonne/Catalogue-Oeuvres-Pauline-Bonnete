@@ -325,10 +325,14 @@
   .puce:active { transform: scale(.96); }
   .puce .n { font-size: .78rem; color: var(--doux); font-variant-numeric: tabular-nums; }
   .puce[aria-pressed="true"] .n { color: rgba(255,255,255,.72); }
-  .segment { border-radius: 999px; padding: 3px; gap: 2px; border-color: #d6d9d2; }
-  .segment button { border-radius: 999px; min-height: 36px; transition: background-color .18s, color .18s; }
+  /* Sélecteur à bascule : une glissière grise et une touche blanche en relief, sans rapport avec les pastilles de filtre */
+  .segment { border: 0; border-radius: 10px; padding: 3px; gap: 2px; background: #e2e4df; }
+  .segment button { border-radius: 7px; min-height: 34px; padding: 0 14px; color: var(--doux); transition: background-color .18s, color .18s, box-shadow .18s; }
   .segment button + button { border-left: 0; }
-  .segment button[aria-pressed="true"] { background: var(--encre); color: #fff; }
+  .segment button:hover { color: var(--encre); }
+  .segment button[aria-pressed="true"] { background: #fff; color: var(--encre); font-weight: 600; box-shadow: 0 1px 2px rgba(23,28,38,.2), 0 0 0 1px rgba(23,28,38,.04); }
+  .segment.icones button { width: 42px; padding: 0; justify-content: center; }
+  .segment.icones .lib { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   /* Œuvres : accrochées au mur, sous passe-partout, avec leur cartel */
   .grille { gap: 22px 16px; }
@@ -795,9 +799,9 @@ function vueListe() {
     <div class="puces" id="puces" role="group" aria-label="Filtrer par statut"></div>
     <div class="outils">
       <div class="sous" id="resume" aria-live="polite"></div>
-      <div class="segment" id="bascule" role="group" aria-label="Mode d'affichage">
-        <button data-vue="grille"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>Vignettes</button>
-        <button data-vue="liste"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="4" height="4" rx="1"/><rect x="8" y="4" width="10" height="2" rx="1"/><rect x="2" y="8" width="4" height="4" rx="1"/><rect x="8" y="9" width="10" height="2" rx="1"/><rect x="2" y="13" width="4" height="4" rx="1"/><rect x="8" y="14" width="10" height="2" rx="1"/></svg>Liste</button>
+      <div class="segment icones" id="bascule" role="group" aria-label="Mode d'affichage">
+        <button data-vue="grille" title="Afficher en vignettes"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg><span class="lib">Vignettes</span></button>
+        <button data-vue="liste" title="Afficher en liste"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="4" height="4" rx="1"/><rect x="8" y="4" width="10" height="2" rx="1"/><rect x="2" y="8" width="4" height="4" rx="1"/><rect x="8" y="9" width="10" height="2" rx="1"/><rect x="2" y="13" width="4" height="4" rx="1"/><rect x="8" y="14" width="10" height="2" rx="1"/></svg><span class="lib">Liste</span></button>
       </div>
     </div>
     <div class="${etat.vue === "liste" ? "liste" : "grille"}" id="grille" aria-busy="true">${'<div class="squelette"></div>'.repeat(etat.vue === "liste" ? 6 : 8)}</div>
