@@ -416,6 +416,39 @@
   #liste-certificats .vente .droite .badge { margin-bottom: 4px; }
   @media (max-width: 600px) { .actions-cert .btn { flex: 1 1 100%; } }
 
+  /* Éditeur de photo */
+  body.editeur-ouvert { overflow: hidden; }
+  .editeur { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; background: #10131a; color: #fff; animation: voile .2s ease both; }
+  .editeur-tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: calc(14px + env(safe-area-inset-top)) 18px 10px; }
+  .editeur-tete strong { font: 700 1.1rem/1.2 var(--titre); }
+  .editeur-aide { color: rgba(255,255,255,.62); font-size: .85rem; }
+  .editeur-zone { flex: 1; min-height: 0; padding: 4px 12px 12px; }
+  .editeur-zone img { display: block; max-width: 100%; max-height: 100%; }
+  .editeur-outils { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #171b24; border-top: 1px solid rgba(255,255,255,.1); }
+  .editeur-groupe { display: flex; align-items: center; gap: 8px; }
+  .editeur-groupe.fin { margin-left: auto; }
+  .editeur-groupe.fin .btn { min-height: 46px; }
+  .editeur-groupe.fin .btn:not(.plein) { background: transparent; color: #fff; border-color: rgba(255,255,255,.35); }
+  .ed-btn { display: inline-grid; place-items: center; min-width: 46px; min-height: 46px; padding: 0 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.06); color: #fff; cursor: pointer; transition: background-color .15s; }
+  .ed-btn:hover { background: rgba(255,255,255,.16); }
+  .ed-btn svg { width: 22px; height: 22px; }
+  .ed-btn.texte { font-size: .88rem; padding: 0 14px; }
+  .ed-segment { display: inline-flex; padding: 3px; gap: 2px; border-radius: 12px; background: rgba(255,255,255,.1); }
+  .ed-segment button { min-height: 40px; padding: 0 14px; border: 0; border-radius: 9px; background: none; color: rgba(255,255,255,.75); cursor: pointer; font-size: .88rem; }
+  .ed-segment button[aria-pressed="true"] { background: #fff; color: var(--encre); font-weight: 600; }
+  .editeur .cropper-view-box { outline: 2px solid #fff; outline-color: #fff; }
+  .editeur .cropper-point { width: 14px; height: 14px; background: #fff; opacity: 1; border-radius: 50%; }
+  .editeur .cropper-point.point-se { width: 14px; height: 14px; }
+  .editeur .cropper-line { background: transparent; }
+  .editeur .cropper-modal { background: #10131a; opacity: .72; }
+  @media (max-width: 600px) {
+    .editeur-aide { display: none; }
+    .editeur-outils { justify-content: center; }
+    .editeur-groupe.fin { margin-left: 0; flex: 1 1 100%; }
+    .editeur-groupe.fin .btn { flex: 1; }
+    .editeur .cropper-point { width: 20px; height: 20px; }
+  }
+
   /* Navigation latérale */
   #lateral { box-shadow: 1px 0 0 var(--trait); border-right: 0; }
   .lat-marque { font: 700 1.3rem/1.1 var(--titre); letter-spacing: -.02em; }
@@ -529,6 +562,7 @@ const ICONES = {
 };
 ICONES.cadre = svg('<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="8" y="8" width="8" height="8"/>');
 ICONES.document = svg('<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>');
+ICONES.recadrer = svg('<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/>');
 ICONES.fermer = svg('<path d="M6 6l12 12M18 6L6 18"/>');
 ICONES.graphique = svg('<path d="M5 20V11M12 20V4M19 20v-6"/>');
 const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
@@ -699,7 +733,7 @@ function vueConnexion(message = "", type = "erreur") {
   app.innerHTML = `
     <div class="carte" style="max-width:420px;margin:8vh auto 0">
       <h1 style="font-size:1.9rem">Pauline Bonneté</h1>
-      <p class="sous" style="margin-top:6px">Catalogue des œuvres, espace de gestion</p>
+      <p class="sous" style="margin-top:6px">Ma vie, mes œuvres</p>
       ${message ? `<div class="message ${type}">${message}</div>` : ""}
       <form id="f">
         <label for="email">Adresse e-mail</label>
@@ -1114,6 +1148,8 @@ async function vueFiche(id, origine) {
              : `<img class="apercu" id="apercu" alt="Aperçu de la photo choisie" hidden>`}
         <label class="zone-photo" for="photo" id="zone" style="margin-top:${id ? "12px" : "0"};min-height:${id ? "56px" : "160px"}">${id ? "Remplacer la photo" : `<span>Toucher ici pour prendre ou choisir une photo&nbsp;${req}</span>`}</label>
         <input class="cache" id="photo" type="file" accept="image/*">
+        <button class="btn large" type="button" id="recadrer" style="margin-top:10px" ${id ? "" : "hidden"}>${ICONES.recadrer}Recadrer la photo</button>
+        <p class="aide" id="aide-recadrage" hidden>Recadrage appliqué. Enregistrez la fiche pour le conserver.</p>
         ${id ? `<p class="aide">${[
           o.poids_photo_octets != null ? `Photo en ligne : ${poids(o.poids_photo_octets)}` : "",
           o.fichier_origine ? `Fichier d'origine : ${esc(o.fichier_origine)}${o.poids_origine_octets != null ? ` (${poids(o.poids_origine_octets)})` : ""}` : ""
@@ -1189,7 +1225,7 @@ async function vueFiche(id, origine) {
       </div>
     </div>`;
   document.body.classList.add("barre-visible");
-  let fichier = null;
+  let fichier = null, choisi = null; // choisi : fichier choisi par l'utilisateur (nom et poids), distinct d'un simple recadrage
   const marquer = () => { etat.modifie = true; };
   $("#f").addEventListener("input", (e) => { marquer(); e.target.removeAttribute("aria-invalid"); });
   $("#f").addEventListener("change", marquer);
@@ -1207,9 +1243,29 @@ async function vueFiche(id, origine) {
   $("#annuler").addEventListener("click", quitter);
   $("#photo").addEventListener("change", (e) => {
     fichier = e.target.files[0] || null; if (!fichier) return;
+    choisi = { nom: fichier.name, poids: fichier.size };
     const img = $("#apercu"); img.src = URL.createObjectURL(fichier); img.hidden = false;
     $("#zone").textContent = "Changer de photo"; $("#zone").style.minHeight = "56px"; $("#zone").style.marginTop = "12px";
     $("#zone").removeAttribute("aria-invalid");
+    $("#recadrer").hidden = false; $("#aide-recadrage").hidden = true;
+  });
+  $("#recadrer").addEventListener("click", async (e) => {
+    const b = e.currentTarget; b.disabled = true;
+    try {
+      let source = fichier;
+      if (!source) { // photo déjà enregistrée : on la relit pour la recadrer
+        const rep = await fetch(urlPhoto(o.photo_path));
+        if (!rep.ok) throw new Error("La photo enregistrée n'a pas pu être lue.");
+        source = await rep.blob();
+      }
+      const blob = await recadrerPhoto(source);
+      if (blob) {
+        fichier = new File([blob], (choisi ? choisi.nom : o.fichier_origine) || "photo.jpg", { type: "image/jpeg" });
+        const img = $("#apercu"); img.src = URL.createObjectURL(fichier); img.hidden = false;
+        $("#aide-recadrage").hidden = false; marquer();
+      }
+    } catch (err) { alerte(msgErreur(err)); }
+    b.disabled = false;
   });
   const alerte = (m, champ) => {
     $("#alerte").innerHTML = m ? `<div class="message erreur">${m}</div>` : "";
@@ -1253,9 +1309,11 @@ async function vueFiche(id, origine) {
     try {
       const oid = id || crypto.randomUUID();
       const chemins = fichier ? await envoyerPhoto(oid, fichier) : {};
+      if (fichier && choisi) { chemins.fichier_origine = choisi.nom; chemins.poids_origine_octets = choisi.poids; }
+      else delete chemins.poids_origine_octets; // simple recadrage : le fichier d'origine reste le même
       const req = id
-        ? sb.from("oeuvres").update({ ...valeurs, ...chemins, ...(fichier ? { fichier_origine: fichier.name } : {}) }).eq("id", id)
-        : sb.from("oeuvres").insert({ id: oid, ...valeurs, ...chemins, fichier_origine: fichier.name });
+        ? sb.from("oeuvres").update({ ...valeurs, ...chemins }).eq("id", id)
+        : sb.from("oeuvres").insert({ id: oid, ...valeurs, ...chemins });
       const { error } = await req;
       if (error) throw error;
       if (id && fichier) await sb.storage.from(BUCKET).remove([o.photo_path, o.vignette_path]);
@@ -1691,5 +1749,6 @@ sb.auth.onAuthStateChange((evenement, session) => {
 });
 </script>
 <script src="certificats.js"></script>
+<script src="recadrage.js"></script>
 </body>
 </html>
