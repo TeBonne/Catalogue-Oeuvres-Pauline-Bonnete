@@ -781,7 +781,8 @@ async function vueFiche(id, origine) {
 
         <h2 class="section">Description</h2>
         <label for="description">Description</label>
-        <textarea id="description" style="min-height:120px">${esc(o.description)}</textarea>
+        <textarea id="description" style="min-height:120px" aria-describedby="description-aide">${esc(o.description)}</textarea>
+        <p class="aide" id="description-aide">Ce texte sera publié sur le site web, à côté de l'œuvre.</p>
 
         <h2 class="section">Suivi interne</h2>
         <label for="notes">Notes privées</label>
