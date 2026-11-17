@@ -90,6 +90,10 @@
   .ligne .droite .badge { display: block; margin-top: 4px; font-weight: 600; }
   .bascule { display: flex; justify-content: flex-end; gap: 6px; margin: 0 0 12px; }
   .bascule .puce { min-height: 36px; }
+  .bloc { margin-bottom: 14px; }
+  .rang { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .rang input { flex: 1; min-width: 120px; }
+  .rang .btn { flex: none; padding: 0 12px; }
   .vide { text-align: center; color: var(--doux); padding: 40px 10px; }
   .barre-bas {
     position: fixed; left: 0; right: 0; bottom: 0; background: rgba(246,242,236,.96);
@@ -135,7 +139,9 @@ const app = document.getElementById("app");
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 let vueMemorisee = "grille";
 try { vueMemorisee = localStorage.getItem("catalogue-vue") === "liste" ? "liste" : "grille"; } catch (_) {}
-const etat = { vue: vueMemorisee, utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
+const LIBELLES_DEFAUT = { technique: "Technique", support: "Support", nature: "Nature" };
+const TYPES = { texte: "Texte", nombre: "Nombre", liste: "Liste de choix", case: "Case à cocher" };
+const etat = { vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
 
 /* ---------- Utilitaires ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -187,6 +193,15 @@ async function envoyerPhoto(id, fichier) {
   return { photo_path, vignette_path };
 }
 
+/* Configuration des champs (gérée depuis l'espace administrateur) */
+async function chargerChamps() {
+  const { data, error } = await sb.from("champs").select("*").order("ordre").order("cree_le");
+  if (error) throw error;
+  etat.champs = data;
+}
+const champSysteme = (cle) => etat.champs.find((c) => c.systeme && c.cle === cle) || { libelle: LIBELLES_DEFAUT[cle], options: LISTES[cle] };
+const champsPerso = () => etat.champs.filter((c) => !c.systeme);
+
 /* ---------- Connexion ---------- */
 function vueConnexion(message = "", type = "erreur") {
   app.innerHTML = `
@@ -234,9 +249,11 @@ async function demarrer(session) {
   if (!session) { etat.utilisateur = null; return vueConnexion(); }
   if (etat.utilisateur === session.user.id) return;
   etat.utilisateur = session.user.id;
-  const { data, error } = await sb.from("membres").select("email").limit(1);
+  const { data, error } = await sb.from("membres").select("email,admin").limit(1);
   if (error) return vueConnexion(msgErreur(error));
   if (!data.length) return vueNonAutorise(session.user.email);
+  etat.admin = !!data[0].admin;
+  try { await chargerChamps(); } catch (_) { etat.champs = []; }
   vueListe();
 }
 
@@ -317,7 +334,7 @@ function vueListe() {
   app.innerHTML = `
     <div class="entete">
       <div><h1>Catalogue des œuvres</h1><div class="sous" id="resume">Chargement…</div></div>
-      <button class="btn lien" id="sortir">Déconnexion</button>
+      <div style="text-align:right">${etat.admin ? `<button class="btn lien" id="admin">Administration</button>` : ""}<button class="btn lien" id="sortir">Déconnexion</button></div>
     </div>
     <input id="q" type="search" placeholder="Rechercher un titre, une série, une technique…" value="${esc(etat.q)}" aria-label="Rechercher">
     <div class="puces" id="puces"></div>
@@ -344,6 +361,7 @@ function vueListe() {
   $("#plus").addEventListener("click", async () => { try { await chargerPage(false); dessinerGrille(); } catch (e) { $("#resume").textContent = "Erreur de chargement : " + (e.message || e); } });
   $("#ajouter").addEventListener("click", () => vueFiche(null));
   $("#import").addEventListener("click", vueImport);
+  if (etat.admin) $("#admin").addEventListener("click", () => vueAdmin());
   $("#sortir").addEventListener("click", () => sb.auth.signOut());
   rafraichirListe(true);
 }
@@ -366,14 +384,28 @@ async function vueFiche(id) {
     o = data;
   }
   const listes = await suggestions();
+  try { await chargerChamps(); } catch (_) {}
+  const perso = o.champs_perso || {};
+  const champPerso = (c) => {
+    const v = perso[c.id], idc = "cp-" + c.id;
+    const lab = `<label for="${idc}">${esc(c.libelle)} <span class="opt">(facultatif)</span></label>`;
+    if (c.type === "liste") {
+      const vals = v && !c.options.includes(v) ? [...c.options, v] : c.options;
+      return `${lab}<select id="${idc}"><option value="">Choisir…</option>${vals.map((x) => `<option value="${esc(x)}" ${v === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>`;
+    }
+    if (c.type === "case") return `<label class="coche" for="${idc}" style="margin-top:14px"><input id="${idc}" type="checkbox" ${v === true ? "checked" : ""}> ${esc(c.libelle)}</label>`;
+    if (c.type === "nombre") return `${lab}<input id="${idc}" inputmode="decimal" value="${esc(v == null ? "" : String(v).replace(".", ","))}">`;
+    return `${lab}<input id="${idc}" value="${esc(v)}" autocomplete="off">`;
+  };
   const champListe = (cle, lib) => `
     <div><label for="${cle}">${lib} <span class="opt">(facultatif)</span></label>
     <input id="${cle}" list="l-${cle}" value="${esc(o[cle])}" autocomplete="off">
     <datalist id="l-${cle}">${[...listes[cle]].sort((a, b) => a.localeCompare(b, "fr")).map((v) => `<option value="${esc(v)}">`).join("")}</datalist></div>`;
-  const champChoix = (cle, lib) => {
-    const valeurs = o[cle] && !LISTES[cle].includes(o[cle]) ? [...LISTES[cle], o[cle]] : LISTES[cle];
+  const champChoix = (cle) => {
+    const c = champSysteme(cle);
+    const valeurs = o[cle] && !c.options.includes(o[cle]) ? [...c.options, o[cle]] : c.options;
     return `
-    <div><label for="${cle}">${lib} <span class="opt">(facultatif)</span></label>
+    <div><label for="${cle}">${esc(c.libelle)} <span class="opt">(facultatif)</span></label>
     <select id="${cle}">
       <option value="" ${o[cle] ? "" : "selected"}>Choisir…</option>
       ${valeurs.map((v) => `<option value="${esc(v)}" ${o[cle] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}
@@ -412,6 +444,7 @@ async function vueFiche(id) {
         <option value="oui" ${o.encadre === true ? "selected" : ""}>Encadré</option>
         <option value="non" ${o.encadre === false ? "selected" : ""}>Non encadré</option>
       </select>
+      ${champsPerso().map(champPerso).join("")}
       <label for="notes">Notes privées <span class="opt">(acheteur, date de vente… jamais publiées)</span></label>
       <textarea id="notes">${esc(o.notes_privees)}</textarea>
       ${id && o.fichier_origine ? `<p class="sous">Fichier d'origine : ${esc(o.fichier_origine)}</p>` : ""}
@@ -437,13 +470,20 @@ async function vueFiche(id) {
     if ((texte($("#hauteur").value) && !(h > 0)) || (texte($("#largeur").value) && !(l > 0))) return alerte("Les dimensions doivent être des nombres positifs.");
     if (texte($("#annee").value) && !(Number.isInteger(a) && a >= 1900 && a <= 2100)) return alerte("L'année doit comporter quatre chiffres.");
     if (texte($("#prix").value) && !(p >= 0)) return alerte("Le prix doit être un nombre.");
+    const cp = { ...(o.champs_perso || {}) };
+    for (const c of champsPerso()) {
+      const el = document.getElementById("cp-" + c.id); if (!el) continue;
+      const v = c.type === "case" ? el.checked : c.type === "nombre" ? nombre(el.value) : texte(el.value);
+      if (c.type === "nombre" && texte(el.value) && v === null) return alerte(`« ${esc(c.libelle)} » doit être un nombre.`);
+      if (v === null || v === false) delete cp[c.id]; else cp[c.id] = v;
+    }
     const valeurs = {
       titre: texte($("#titre").value) || "Sans titre", statut: $("#statut").value,
       technique: texte($("#technique").value), support: texte($("#support").value),
       nature: texte($("#nature").value), serie: texte($("#serie").value),
       hauteur_cm: h, largeur_cm: l, annee: a, prix_eur: p, prix_masque: $("#prix_masque").checked,
       encadre: $("#encadre").value === "" ? null : $("#encadre").value === "oui",
-      notes_privees: texte($("#notes").value)
+      notes_privees: texte($("#notes").value), champs_perso: cp
     };
     const bouton = $("#valider"); bouton.disabled = true; bouton.textContent = "Enregistrement…"; alerte("");
     try {
@@ -470,6 +510,99 @@ async function vueFiche(id) {
       vueListe();
     });
   }
+}
+
+/* ---------- Espace administrateur ---------- */
+async function vueAdmin(message = "", type = "info") {
+  if (!etat.admin) return vueListe();
+  window.scrollTo(0, 0);
+  app.innerHTML = `<p class="sous">Chargement…</p>`;
+  try { await chargerChamps(); } catch (e) { message = msgErreur(e); type = "erreur"; }
+  const carte = (c) => `
+    <section class="carte bloc" data-champ="${c.id}">
+      <div class="sous">${c.systeme ? "Champ d'origine" : "Champ supplémentaire"} · ${TYPES[c.type]}</div>
+      <label for="lib-${c.id}">Libellé du champ</label>
+      <div class="rang"><input id="lib-${c.id}" value="${esc(c.libelle)}"><button class="btn" data-action="libelle">Enregistrer</button></div>
+      ${c.type === "liste" ? `
+        <label>Choix proposés</label>
+        ${c.options.map((v, i) => `
+          <div class="rang"><input data-option="${i}" value="${esc(v)}" aria-label="Choix ${i + 1}">
+          <button class="btn" data-action="renommer" data-i="${i}">Renommer</button>
+          <button class="btn danger" data-action="retirer" data-i="${i}">Retirer</button></div>`).join("") || `<p class="sous">Aucun choix pour l'instant.</p>`}
+        <div class="rang"><input data-nouveau placeholder="Nouveau choix" aria-label="Nouveau choix"><button class="btn" data-action="ajouter">Ajouter</button></div>` : ""}
+      ${c.systeme ? "" : `<button class="btn danger large" data-action="supprimer" style="margin-top:16px">Supprimer ce champ</button>`}
+    </section>`;
+  app.innerHTML = `
+    <div id="adm">
+      <div class="entete"><h1>Administration</h1><button class="btn lien" id="retour">Retour</button></div>
+      <p class="sous">Champs et listes de choix des fiches. Les modifications s'appliquent à toutes les œuvres.</p>
+      <div id="alerte">${message ? `<div class="message ${type}">${message}</div>` : ""}</div>
+      ${etat.champs.map(carte).join("")}
+      <section class="carte bloc">
+        <h2>Ajouter un champ</h2>
+        <label for="n-lib">Libellé</label>
+        <input id="n-lib" placeholder="Par exemple : Lieu de stockage" autocomplete="off">
+        <label for="n-type">Type</label>
+        <select id="n-type">${Object.entries(TYPES).map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select>
+        <p class="sous">Le type ne peut plus être changé ensuite. Pour une liste, les choix s'ajoutent après la création.</p>
+        <button class="btn plein large" id="n-ajouter">Ajouter le champ</button>
+      </section>
+    </div>`;
+  $("#retour").addEventListener("click", vueListe);
+  const erreur = (m) => { $("#alerte").innerHTML = `<div class="message erreur">${m}</div>`; window.scrollTo(0, 0); };
+  const verifier = (res) => { if (res.error) throw res.error; if (res.data && !res.data.length) throw new Error("Modification refusée : droits insuffisants."); };
+
+  $("#n-ajouter").addEventListener("click", async () => {
+    const libelle = texte($("#n-lib").value);
+    if (!libelle) return erreur("Indiquez un libellé pour le nouveau champ.");
+    const ordre = Math.max(0, ...etat.champs.map((c) => c.ordre)) + 1;
+    try {
+      verifier(await sb.from("champs").insert({ libelle, type: $("#n-type").value, ordre }).select("id"));
+      vueAdmin(`Champ « ${esc(libelle)} » ajouté.`);
+    } catch (e) { erreur(msgErreur(e)); }
+  });
+
+  $("#adm").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-action]"); if (!b) return;
+    const bloc = b.closest("[data-champ]");
+    const c = etat.champs.find((x) => x.id === bloc.dataset.champ);
+    const action = b.dataset.action, i = Number(b.dataset.i);
+    if ((action === "retirer" || action === "supprimer") && !b.dataset.arme) {
+      b.dataset.arme = "1"; b.textContent = "Confirmer";
+      setTimeout(() => { if (b.isConnected) { delete b.dataset.arme; b.textContent = action === "retirer" ? "Retirer" : "Supprimer ce champ"; } }, 5000);
+      return;
+    }
+    b.disabled = true;
+    try {
+      let ok = "";
+      if (action === "libelle") {
+        const v = texte($("#lib-" + c.id).value);
+        if (!v) throw new Error("Le libellé ne peut pas être vide.");
+        verifier(await sb.from("champs").update({ libelle: v }).eq("id", c.id).select("id"));
+        ok = "Libellé enregistré.";
+      } else if (action === "ajouter") {
+        const v = texte($("[data-nouveau]", bloc).value);
+        if (!v) throw new Error("Saisissez le nouveau choix.");
+        if (c.options.includes(v)) throw new Error("Ce choix existe déjà.");
+        verifier(await sb.from("champs").update({ options: [...c.options, v] }).eq("id", c.id).select("id"));
+        ok = `Choix « ${v} » ajouté.`;
+      } else if (action === "renommer") {
+        const v = texte($(`[data-option="${i}"]`, bloc).value);
+        if (!v) throw new Error("Le choix ne peut pas être vide.");
+        if (v === c.options[i]) { b.disabled = false; return; }
+        const res = await sb.rpc("renommer_option", { p_champ: c.id, p_ancien: c.options[i], p_nouveau: v });
+        if (res.error) throw res.error;
+        ok = `Choix renommé en « ${v} ». Œuvres mises à jour : ${res.data}.`;
+      } else if (action === "retirer") {
+        verifier(await sb.from("champs").update({ options: c.options.filter((_, k) => k !== i) }).eq("id", c.id).select("id"));
+        ok = `Choix « ${c.options[i]} » retiré de la liste. Les œuvres qui l'utilisaient le conservent.`;
+      } else if (action === "supprimer") {
+        verifier(await sb.from("champs").delete().eq("id", c.id).select("id"));
+        ok = `Champ « ${c.libelle} » supprimé.`;
+      }
+      vueAdmin(esc(ok));
+    } catch (err) { b.disabled = false; erreur(msgErreur(err)); }
+  });
 }
 
 /* ---------- Import en lot ---------- */
