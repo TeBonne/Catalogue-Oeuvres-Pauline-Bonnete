@@ -200,6 +200,8 @@
   [aria-invalid="true"] { border-color: var(--alerte); background: #fff8f7; }
   .champ-court { max-width: 240px; }
   .zone-danger { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--trait); }
+  .actions-fiche { display: flex; flex-wrap: wrap; gap: 10px; }
+  @media (max-width: 600px) { .actions-fiche .btn { flex: 1 1 100%; } }
   .rang.option { flex-wrap: nowrap; }
   .rang.option input { min-width: 0; }
   details.champ > summary {
@@ -655,7 +657,7 @@ function majLateral(section) {
     ${lien("liste:pas_a_vendre", "Pas à vendre", etat.comptes.pas_a_vendre ?? "", point("pas_a_vendre"))}
     ${etat.admin ? `<div class="lat-titre">Suivi</div>${lien("ventes", "Suivi des ventes", null, ICONES.graphique)}` : ""}
     <div class="lat-titre">Documents</div>
-    <button class="lat-lien" disabled><span>${ICONES.document}<span>Certificats d'authentification</span></span><span class="bientot">à venir</span></button>
+    <button class="lat-lien" disabled><span>${ICONES.document}<span>Certificats d'authenticité</span></span><span class="bientot">à venir</span></button>
     ${etat.admin ? `<div class="lat-titre">Maintenance</div>${lien("corbeille", "Corbeille", etat.enCorbeille, ICONES.corbeille)}` : ""}
     <div class="lat-bas"><button class="lat-lien" data-nav="sortir"><span>${ICONES.sortir}<span>Déconnexion</span></span></button></div>`;
   lateral.hidden = false; document.body.classList.add("avec-lateral");
@@ -1151,7 +1153,10 @@ async function vueFiche(id, origine) {
         <textarea id="notes" aria-describedby="notes-aide">${esc(o.notes_privees)}</textarea>
         <p class="aide" id="notes-aide">Acheteur, date de vente… Ces notes ne sont jamais publiées.</p>
 
-        ${id ? `<div class="zone-danger"><button class="btn danger" type="button" id="supprimer">Supprimer</button></div>` : ""}
+        ${id ? `<div class="zone-danger actions-fiche">
+          <button class="btn plein" type="button" id="certificat">Générer le certificat d'authenticité</button>
+          <button class="btn danger" type="button" id="supprimer">Supprimer</button>
+        </div>` : ""}
       </div>
     </form>
     <div class="barre-bas">
@@ -1239,6 +1244,8 @@ async function vueFiche(id, origine) {
   });
 
   if (id) {
+    // La génération elle-même reste à construire : le bouton l'annonce au lieu de ne rien faire.
+    $("#certificat").addEventListener("click", () => bandeau("La génération du certificat n'est pas encore disponible."));
     const b = $("#supprimer");
     b.addEventListener("click", async () => {
       const accord = await confirmer({
