@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f6f2ec">
+<title>Catalogue des œuvres — Pauline Bonneté</title>
+<style>
+  :root {
+    --fond: #f6f2ec; --carte: #ffffff; --encre: #23201c; --doux: #6f675d;
+    --trait: #e2dbd0; --accent: #9c4a2f; --accent-fonce: #7d3923; --alerte: #a3261f;
+    --rayon: 12px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--fond); color: var(--encre);
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+  h1 { font: 600 1.35rem/1.2 Georgia, "Times New Roman", serif; margin: 0; }
+  h2 { font: 600 1.15rem/1.2 Georgia, "Times New Roman", serif; margin: 0 0 12px; }
+  .page { max-width: 960px; margin: 0 auto; padding: 16px; }
+  .entete { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .sous { color: var(--doux); font-size: .9rem; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  input, select, textarea {
+    width: 100%; padding: 12px; border: 1px solid var(--trait); border-radius: 10px;
+    background: #fff; font-size: 16px;
+  }
+  textarea { min-height: 90px; resize: vertical; }
+  input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  label { display: block; font-size: .85rem; font-weight: 600; margin: 14px 0 6px; }
+  label .opt { font-weight: 400; color: var(--doux); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 48px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--trait);
+    background: #fff; cursor: pointer; font-weight: 600;
+  }
+  .btn.plein { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.plein:active { background: var(--accent-fonce); }
+  .btn.danger { color: var(--alerte); border-color: #e6c3c0; }
+  .btn.large { width: 100%; }
+  .btn.lien { border: 0; background: none; min-height: 40px; padding: 0 6px; color: var(--accent); }
+  .btn[disabled] { opacity: .55; cursor: default; }
+  .carte { background: var(--carte); border: 1px solid var(--trait); border-radius: var(--rayon); padding: 18px; }
+  .message { padding: 12px 14px; border-radius: 10px; margin: 12px 0; font-size: .95rem; }
+  .message.erreur { background: #fbeceb; color: var(--alerte); }
+  .message.info { background: #eef3ea; color: #33502a; }
+  .puces { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; margin: 10px 0 4px; scrollbar-width: none; }
+  .puces::-webkit-scrollbar { display: none; }
+  .puce {
+    flex: none; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--trait);
+    background: #fff; cursor: pointer; font-size: .9rem; white-space: nowrap;
+  }
+  .puce[aria-pressed="true"] { background: var(--encre); border-color: var(--encre); color: #fff; }
+  .grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .oeuvre {
+    display: block; text-align: left; padding: 0; border: 1px solid var(--trait); border-radius: var(--rayon);
+    background: #fff; overflow: hidden; cursor: pointer;
+  }
+  .oeuvre img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; background: #ece6dc; }
+  .oeuvre .txt { padding: 8px 10px 10px; }
+  .oeuvre .titre { font-weight: 600; font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .oeuvre .meta { color: var(--doux); font-size: .8rem; display: flex; justify-content: space-between; gap: 6px; margin-top: 2px; }
+  .badge { display: inline-block; font-size: .72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-top: 6px; }
+  .s-a_completer { background: #f3ead2; color: #6b5310; }
+  .s-disponible { background: #e2efdc; color: #2f5a22; }
+  .s-reserve { background: #dfe8f3; color: #274a73; }
+  .s-vendu { background: #eadfe9; color: #5d2f59; }
+  .s-pas_a_vendre { background: #e9e6e1; color: #4d473f; }
+  .vide { text-align: center; color: var(--doux); padding: 40px 10px; }
+  .barre-bas {
+    position: fixed; left: 0; right: 0; bottom: 0; background: rgba(246,242,236,.96);
+    border-top: 1px solid var(--trait); padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  }
+  .barre-bas .contenu { max-width: 960px; margin: 0 auto; display: flex; gap: 10px; }
+  .barre-bas .btn { flex: 1; }
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .apercu { width: 100%; max-height: 60vh; object-fit: contain; border-radius: var(--rayon); background: #ece6dc; display: block; }
+  .zone-photo {
+    display: flex; align-items: center; justify-content: center; text-align: center; min-height: 160px;
+    border: 2px dashed var(--trait); border-radius: var(--rayon); color: var(--doux); padding: 16px; cursor: pointer; background: #fff;
+  }
+  .cache { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+  progress { width: 100%; height: 14px; accent-color: var(--accent); }
+  ul.journal { padding-left: 18px; font-size: .88rem; color: var(--alerte); max-height: 200px; overflow: auto; }
+</style>
+</head>
+<body>
+<div id="app" class="page"><p class="sous">Chargement…</p></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+"use strict";
+/* ---------- Configuration ---------- */
+const SUPABASE_URL = "https://yvgdxhzeyvubmfzeejia.supabase.co";
+const SUPABASE_CLE = "sb_publishable__RZy5M7fjfUObsQqjHFjsw_jqfSaOJb"; // clé publique : la protection repose sur les règles d'accès de la base
+const BUCKET = "oeuvres";
+const PAGE = 60;
+const STATUTS = {
+  a_completer: "À compléter", disponible: "Disponible", reserve: "Réservé",
+  vendu: "Vendu", pas_a_vendre: "Pas à vendre"
+};
+const SUGGESTIONS = {
+  technique: ["Aquarelle", "Acrylique", "Huile", "Gouache", "Pastel", "Encre", "Technique mixte"],
+  support: ["Toile", "Papier type Canson", "Carton toilé", "Bois"],
+  nature: ["Original", "Commande", "Reproduction"],
+  serie: []
+};
+
+const app = document.getElementById("app");
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
+const etat = { utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
+
+/* ---------- Utilitaires ---------- */
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = (sel, racine = document) => racine.querySelector(sel);
+const urlPhoto = (chemin) => sb.storage.from(BUCKET).getPublicUrl(chemin).data.publicUrl;
+const nombre = (v) => { const n = parseFloat(String(v ?? "").replace(",", ".").replace(/\s/g, "")); return Number.isFinite(n) ? n : null; };
+const texte = (v) => { const t = String(v ?? "").trim(); return t === "" ? null : t; };
+const prix = (v) => v == null ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 }).format(v);
+const dims = (o) => (o.hauteur_cm && o.largeur_cm) ? `${String(o.hauteur_cm).replace(".", ",")} × ${String(o.largeur_cm).replace(".", ",")} cm` : "";
+const msgErreur = (e) => esc(e?.message || String(e));
+
+/* Redimensionne une photo dans le navigateur : version d'affichage + vignette (JPEG). */
+async function preparerPhoto(fichier) {
+  let source;
+  try {
+    source = await createImageBitmap(fichier, { imageOrientation: "from-image" });
+  } catch (_) {
+    source = await new Promise((ok, ko) => {
+      const img = new Image();
+      img.onload = () => ok(img);
+      img.onerror = () => ko(new Error("Format d'image non lisible par ce navigateur : " + fichier.name));
+      img.src = URL.createObjectURL(fichier);
+    });
+  }
+  const l0 = source.width, h0 = source.height;
+  const reduire = (max, qualite) => new Promise((ok, ko) => {
+    const r = Math.min(1, max / Math.max(l0, h0));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(l0 * r)); c.height = Math.max(1, Math.round(h0 * r));
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(source, 0, 0, c.width, c.height);
+    c.toBlob((b) => b ? ok(b) : ko(new Error("Compression impossible : " + fichier.name)), "image/jpeg", qualite);
+  });
+  const grand = await reduire(1600, 0.82);
+  const petit = await reduire(480, 0.75);
+  if (source.close) source.close();
+  return { grand, petit };
+}
+
+async function envoyerPhoto(id, fichier) {
+  const { grand, petit } = await preparerPhoto(fichier);
+  const t = Date.now();
+  const photo_path = `${id}/photo-${t}.jpg`, vignette_path = `${id}/vignette-${t}.jpg`;
+  for (const [chemin, blob] of [[photo_path, grand], [vignette_path, petit]]) {
+    const { error } = await sb.storage.from(BUCKET).upload(chemin, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
+    if (error) throw error;
+  }
+  return { photo_path, vignette_path };
+}
+
+/* ---------- Connexion ---------- */
+function vueConnexion(message = "", type = "erreur") {
+  app.innerHTML = `
+    <div class="carte" style="max-width:420px;margin:8vh auto 0">
+      <h1>Catalogue des œuvres</h1>
+      <p class="sous">Pauline Bonneté — espace de gestion</p>
+      ${message ? `<div class="message ${type}">${message}</div>` : ""}
+      <form id="f">
+        <label for="email">Adresse e-mail</label>
+        <input id="email" type="email" autocomplete="email" required>
+        <label for="mdp">Mot de passe</label>
+        <input id="mdp" type="password" autocomplete="current-password" minlength="8" required>
+        <div style="display:grid;gap:10px;margin-top:18px">
+          <button class="btn plein large" type="submit">Se connecter</button>
+          <button class="btn large" type="button" id="creer">Créer mon compte</button>
+        </div>
+      </form>
+      <p class="sous" style="margin-top:14px">Seules les adresses autorisées accèdent au catalogue.</p>
+    </div>`;
+  const lire = () => ({ email: $("#email").value.trim(), password: $("#mdp").value });
+  $("#f").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const { error } = await sb.auth.signInWithPassword(lire());
+    if (error) vueConnexion(error.message === "Invalid login credentials" ? "E-mail ou mot de passe incorrect." : error.message === "Email not confirmed" ? "Adresse non confirmée : cliquez d'abord sur le lien reçu par e-mail." : msgErreur(error));
+  });
+  $("#creer").addEventListener("click", async () => {
+    if (!$("#f").reportValidity()) return;
+    const { data, error } = await sb.auth.signUp({ ...lire(), options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) return vueConnexion(msgErreur(error));
+    if (!data.session) vueConnexion("Compte créé. Un e-mail de confirmation vient de vous être envoyé : cliquez sur le lien qu'il contient, puis revenez vous connecter ici.", "info");
+  });
+}
+
+function vueNonAutorise(email) {
+  app.innerHTML = `
+    <div class="carte" style="max-width:420px;margin:8vh auto 0">
+      <h1>Accès non autorisé</h1>
+      <p>L'adresse <strong>${esc(email)}</strong> n'est pas encore dans la liste des personnes autorisées.</p>
+      <button class="btn large" id="sortir">Se déconnecter</button>
+    </div>`;
+  $("#sortir").addEventListener("click", () => sb.auth.signOut());
+}
+
+async function demarrer(session) {
+  if (!session) { etat.utilisateur = null; return vueConnexion(); }
+  if (etat.utilisateur === session.user.id) return;
+  etat.utilisateur = session.user.id;
+  const { data, error } = await sb.from("membres").select("email").limit(1);
+  if (error) return vueConnexion(msgErreur(error));
+  if (!data.length) return vueNonAutorise(session.user.email);
+  vueListe();
+}
+
+/* ---------- Liste ---------- */
+function filtrer(req) {
+  if (etat.statut) req = req.eq("statut", etat.statut);
+  const q = etat.q.replace(/[,()%*\\"]/g, " ").trim();
+  if (q) req = req.or(["titre", "serie", "technique", "support"].map((c) => `${c}.ilike."%${q}%"`).join(","));
+  return req;
+}
+
+async function chargerComptes() {
+  const cles = ["", ...Object.keys(STATUTS)];
+  const res = await Promise.all(cles.map((s) => {
+    let r = sb.from("oeuvres").select("id", { count: "exact", head: true });
+    return s ? r.eq("statut", s) : r;
+  }));
+  cles.forEach((s, i) => { if (s) etat.comptes[s] = res[i].count ?? 0; else etat.total_general = res[i].count ?? 0; });
+}
+
+async function chargerPage(reinitialiser) {
+  if (reinitialiser) { etat.items = []; etat.page = 0; }
+  const debut = etat.page * PAGE;
+  const { data, count, error } = await filtrer(
+    sb.from("oeuvres").select("id,titre,statut,prix_eur,vignette_path,technique,hauteur_cm,largeur_cm", { count: "exact" })
+  ).order("cree_le", { ascending: false }).order("id").range(debut, debut + PAGE - 1);
+  if (error) throw error;
+  etat.items.push(...data); etat.total = count ?? etat.items.length; etat.page++;
+}
+
+function dessinerPuces() {
+  const zone = $("#puces"); if (!zone) return;
+  const puce = (cle, lib, n) => `<button class="puce" data-statut="${cle}" aria-pressed="${etat.statut === cle}">${esc(lib)} · ${n}</button>`;
+  zone.innerHTML = puce("", "Toutes", etat.total_general) + Object.entries(STATUTS).map(([c, l]) => puce(c, l, etat.comptes[c] ?? 0)).join("");
+}
+
+function dessinerGrille() {
+  const zone = $("#grille"); if (!zone) return;
+  if (!etat.items.length) {
+    zone.innerHTML = `<div class="vide" style="grid-column:1/-1">${etat.total_general ? "Aucune œuvre ne correspond à ce filtre." : "Le catalogue est vide. Ajoutez une première œuvre ou lancez un import."}</div>`;
+  } else {
+    zone.innerHTML = etat.items.map((o) => `
+      <button class="oeuvre" data-id="${o.id}">
+        <img loading="lazy" alt="" src="${esc(urlPhoto(o.vignette_path))}">
+        <div class="txt">
+          <div class="titre">${esc(o.titre)}</div>
+          <div class="meta"><span>${esc(dims(o) || o.technique || "")}</span><span>${esc(prix(o.prix_eur))}</span></div>
+          <span class="badge s-${o.statut}">${esc(STATUTS[o.statut] || o.statut)}</span>
+        </div>
+      </button>`).join("");
+  }
+  const reste = etat.total - etat.items.length;
+  $("#plus").hidden = reste <= 0;
+  $("#plus").textContent = `Afficher plus (${reste} restantes)`;
+  $("#resume").textContent = `${etat.total} œuvre${etat.total > 1 ? "s" : ""} affichable${etat.total > 1 ? "s" : ""} sur ${etat.total_general} au catalogue`;
+}
+
+async function rafraichirListe(avecComptes) {
+  try {
+    await Promise.all([chargerPage(true), avecComptes ? chargerComptes() : null]);
+    dessinerPuces(); dessinerGrille();
+  } catch (e) { $("#grille").innerHTML = `<div class="message erreur" style="grid-column:1/-1">${msgErreur(e)}</div>`; }
+}
+
+function vueListe() {
+  app.innerHTML = `
+    <div class="entete">
+      <div><h1>Catalogue des œuvres</h1><div class="sous" id="resume">Chargement…</div></div>
+      <button class="btn lien" id="sortir">Déconnexion</button>
+    </div>
+    <input id="q" type="search" placeholder="Rechercher un titre, une série, une technique…" value="${esc(etat.q)}" aria-label="Rechercher">
+    <div class="puces" id="puces"></div>
+    <div class="grille" id="grille"></div>
+    <p style="text-align:center;margin-top:16px"><button class="btn" id="plus" hidden></button></p>
+    <div class="barre-bas"><div class="contenu">
+      <button class="btn" id="import">Import en lot</button>
+      <button class="btn plein" id="ajouter">+ Ajouter une œuvre</button>
+    </div></div>`;
+  let minuterie;
+  $("#q").addEventListener("input", (e) => { clearTimeout(minuterie); minuterie = setTimeout(() => { etat.q = e.target.value; rafraichirListe(false); }, 300); });
+  $("#puces").addEventListener("click", (e) => { const b = e.target.closest(".puce"); if (!b) return; etat.statut = b.dataset.statut; dessinerPuces(); rafraichirListe(false); });
+  $("#grille").addEventListener("click", (e) => { const b = e.target.closest(".oeuvre"); if (b) vueFiche(b.dataset.id); });
+  $("#plus").addEventListener("click", async () => { try { await chargerPage(false); dessinerGrille(); } catch (e) { $("#resume").textContent = "Erreur de chargement : " + (e.message || e); } });
+  $("#ajouter").addEventListener("click", () => vueFiche(null));
+  $("#import").addEventListener("click", vueImport);
+  $("#sortir").addEventListener("click", () => sb.auth.signOut());
+  rafraichirListe(true);
+}
+
+/* ---------- Fiche (ajout / modification) ---------- */
+async function suggestions() {
+  const listes = { technique: new Set(SUGGESTIONS.technique), support: new Set(SUGGESTIONS.support), nature: new Set(SUGGESTIONS.nature), serie: new Set() };
+  const { data } = await sb.from("oeuvres").select("technique,support,nature,serie").limit(1000);
+  (data || []).forEach((o) => Object.keys(listes).forEach((c) => { if (o[c]) listes[c].add(o[c]); }));
+  return listes;
+}
+
+async function vueFiche(id) {
+  app.innerHTML = `<p class="sous">Chargement…</p>`;
+  window.scrollTo(0, 0);
+  let o = { titre: "", statut: "" };
+  if (id) {
+    const { data, error } = await sb.from("oeuvres").select("*").eq("id", id).single();
+    if (error) { app.innerHTML = `<div class="message erreur">${msgErreur(error)}</div><button class="btn" id="retour">Retour</button>`; $("#retour").onclick = vueListe; return; }
+    o = data;
+  }
+  const listes = await suggestions();
+  const champListe = (cle, lib) => `
+    <div><label for="${cle}">${lib} <span class="opt">(facultatif)</span></label>
+    <input id="${cle}" list="l-${cle}" value="${esc(o[cle])}" autocomplete="off">
+    <datalist id="l-${cle}">${[...listes[cle]].sort((a, b) => a.localeCompare(b, "fr")).map((v) => `<option value="${esc(v)}">`).join("")}</datalist></div>`;
+  app.innerHTML = `
+    <div class="entete"><h1>${id ? "Modifier l'œuvre" : "Nouvelle œuvre"}</h1><button class="btn lien" id="retour">Retour</button></div>
+    <form id="f" class="carte" novalidate>
+      <div id="alerte"></div>
+      ${id ? `<a href="${esc(urlPhoto(o.photo_path))}" target="_blank" rel="noopener"><img class="apercu" id="apercu" alt="Photo de l'œuvre" src="${esc(urlPhoto(o.photo_path))}"></a>`
+           : `<img class="apercu" id="apercu" alt="" hidden>`}
+      <label class="zone-photo" for="photo" id="zone" style="margin-top:${id ? "12px" : "0"};min-height:${id ? "56px" : "160px"}">${id ? "Remplacer la photo" : "Toucher ici pour prendre ou choisir une photo"}</label>
+      <input class="cache" id="photo" type="file" accept="image/*">
+
+      <label for="titre">Titre</label>
+      <input id="titre" value="${esc(o.titre === "Sans titre" ? "" : o.titre)}" placeholder="Sans titre" autocomplete="off">
+      <label for="statut">Statut</label>
+      <select id="statut" required>
+        <option value="" ${o.statut ? "" : "selected"} disabled>Choisir…</option>
+        ${Object.entries(STATUTS).map(([c, l]) => `<option value="${c}" ${o.statut === c ? "selected" : ""}>${l}</option>`).join("")}
+      </select>
+      <div class="deux">${champListe("technique", "Technique")}${champListe("support", "Support")}</div>
+      <div class="deux">${champListe("nature", "Nature")}${champListe("serie", "Série ou thème")}</div>
+      <div class="deux">
+        <div><label for="hauteur">Hauteur en cm <span class="opt">(facultatif)</span></label><input id="hauteur" inputmode="decimal" value="${esc(String(o.hauteur_cm ?? "").replace(".", ","))}"></div>
+        <div><label for="largeur">Largeur en cm <span class="opt">(facultatif)</span></label><input id="largeur" inputmode="decimal" value="${esc(String(o.largeur_cm ?? "").replace(".", ","))}"></div>
+      </div>
+      <div class="deux">
+        <div><label for="annee">Année <span class="opt">(facultatif)</span></label><input id="annee" inputmode="numeric" maxlength="4" value="${esc(o.annee)}"></div>
+        <div><label for="prix">Prix en € <span class="opt">(facultatif)</span></label><input id="prix" inputmode="decimal" value="${esc(String(o.prix_eur ?? "").replace(".", ","))}"></div>
+      </div>
+      <label for="encadre">Encadrement <span class="opt">(facultatif)</span></label>
+      <select id="encadre">
+        <option value="" ${o.encadre == null ? "selected" : ""}>Non renseigné</option>
+        <option value="oui" ${o.encadre === true ? "selected" : ""}>Encadré</option>
+        <option value="non" ${o.encadre === false ? "selected" : ""}>Non encadré</option>
+      </select>
+      <label for="notes">Notes privées <span class="opt">(acheteur, date de vente… jamais publiées)</span></label>
+      <textarea id="notes">${esc(o.notes_privees)}</textarea>
+      ${id && o.fichier_origine ? `<p class="sous">Fichier d'origine : ${esc(o.fichier_origine)}</p>` : ""}
+      <div style="display:grid;gap:10px;margin-top:20px">
+        <button class="btn plein large" type="submit" id="valider">Enregistrer</button>
+        ${id ? `<button class="btn danger large" type="button" id="supprimer">Supprimer cette œuvre</button>` : ""}
+      </div>
+    </form>`;
+  $("#retour").addEventListener("click", vueListe);
+  let fichier = null;
+  $("#photo").addEventListener("change", (e) => {
+    fichier = e.target.files[0] || null; if (!fichier) return;
+    const img = $("#apercu"); img.src = URL.createObjectURL(fichier); img.hidden = false;
+    $("#zone").textContent = "Changer de photo"; $("#zone").style.minHeight = "56px"; $("#zone").style.marginTop = "12px";
+  });
+  const alerte = (m) => { $("#alerte").innerHTML = m ? `<div class="message erreur">${m}</div>` : ""; if (m) window.scrollTo(0, 0); };
+
+  $("#f").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!id && !fichier) return alerte("Ajoutez une photo de l'œuvre.");
+    if (!$("#statut").value) return alerte("Choisissez un statut.");
+    const h = nombre($("#hauteur").value), l = nombre($("#largeur").value), a = nombre($("#annee").value), p = nombre($("#prix").value);
+    if ((texte($("#hauteur").value) && !(h > 0)) || (texte($("#largeur").value) && !(l > 0))) return alerte("Les dimensions doivent être des nombres positifs.");
+    if (texte($("#annee").value) && !(Number.isInteger(a) && a >= 1900 && a <= 2100)) return alerte("L'année doit comporter quatre chiffres.");
+    if (texte($("#prix").value) && !(p >= 0)) return alerte("Le prix doit être un nombre.");
+    const valeurs = {
+      titre: texte($("#titre").value) || "Sans titre", statut: $("#statut").value,
+      technique: texte($("#technique").value), support: texte($("#support").value),
+      nature: texte($("#nature").value), serie: texte($("#serie").value),
+      hauteur_cm: h, largeur_cm: l, annee: a, prix_eur: p,
+      encadre: $("#encadre").value === "" ? null : $("#encadre").value === "oui",
+      notes_privees: texte($("#notes").value)
+    };
+    const bouton = $("#valider"); bouton.disabled = true; bouton.textContent = "Enregistrement…"; alerte("");
+    try {
+      const oid = id || crypto.randomUUID();
+      const chemins = fichier ? await envoyerPhoto(oid, fichier) : {};
+      const req = id
+        ? sb.from("oeuvres").update({ ...valeurs, ...chemins }).eq("id", id)
+        : sb.from("oeuvres").insert({ id: oid, ...valeurs, ...chemins, fichier_origine: fichier.name });
+      const { error } = await req;
+      if (error) throw error;
+      if (id && fichier) await sb.storage.from(BUCKET).remove([o.photo_path, o.vignette_path]);
+      vueListe();
+    } catch (err) { bouton.disabled = false; bouton.textContent = "Enregistrer"; alerte(msgErreur(err)); }
+  });
+
+  if (id) {
+    const b = $("#supprimer"); let arme = false;
+    b.addEventListener("click", async () => {
+      if (!arme) { arme = true; b.textContent = "Confirmer la suppression définitive"; setTimeout(() => { if (b.isConnected) { arme = false; b.textContent = "Supprimer cette œuvre"; } }, 5000); return; }
+      b.disabled = true;
+      const { error } = await sb.from("oeuvres").delete().eq("id", id);
+      if (error) { b.disabled = false; return alerte(msgErreur(error)); }
+      await sb.storage.from(BUCKET).remove([o.photo_path, o.vignette_path]);
+      vueListe();
+    });
+  }
+}
+
+/* ---------- Import en lot ---------- */
+async function fichiersDejaImportes() {
+  const noms = new Set();
+  for (let debut = 0; ; debut += 1000) {
+    const { data, error } = await sb.from("oeuvres").select("fichier_origine").not("fichier_origine", "is", null).order("id").range(debut, debut + 999);
+    if (error) throw error;
+    data.forEach((d) => noms.add(d.fichier_origine));
+    if (data.length < 1000) break;
+  }
+  return noms;
+}
+
+function vueImport() {
+  window.scrollTo(0, 0);
+  app.innerHTML = `
+    <div class="entete"><h1>Import en lot</h1><button class="btn lien" id="retour">Retour</button></div>
+    <div class="carte">
+      <p>Sélectionnez plusieurs photos : une fiche « À compléter » est créée par photo, avec le nom du fichier comme titre provisoire.</p>
+      <p class="sous">Les photos sont compressées avant l'envoi ; les originaux restent sur l'appareil. Un fichier dont le nom a déjà été importé est ignoré, ce qui permet de reprendre un import interrompu. Gardez cette page ouverte pendant l'import.</p>
+      <label class="zone-photo" for="lot" id="zone">Choisir les photos</label>
+      <input class="cache" id="lot" type="file" accept="image/*" multiple>
+      <div id="suivi" hidden style="margin-top:16px">
+        <progress id="barre" value="0" max="1"></progress>
+        <p id="etatImport" aria-live="polite"></p>
+        <ul class="journal" id="journal"></ul>
+      </div>
+      <button class="btn plein large" id="lancer" disabled style="margin-top:16px">Lancer l'import</button>
+    </div>`;
+  let enCours = false;
+  $("#retour").addEventListener("click", () => { if (!enCours) vueListe(); });
+  let fichiers = [];
+  $("#lot").addEventListener("change", (e) => {
+    fichiers = [...e.target.files];
+    $("#zone").textContent = fichiers.length ? `${fichiers.length} photo${fichiers.length > 1 ? "s" : ""} sélectionnée${fichiers.length > 1 ? "s" : ""}` : "Choisir les photos";
+    $("#lancer").disabled = !fichiers.length;
+  });
+  $("#lancer").addEventListener("click", async () => {
+    if (enCours || !fichiers.length) return;
+    enCours = true; $("#lancer").disabled = true; $("#suivi").hidden = false; $("#journal").innerHTML = "";
+    const maj = (t) => { $("#etatImport").textContent = t; };
+    let faits = 0, ignores = 0, erreurs = 0, traites = 0;
+    try {
+      maj("Vérification des fichiers déjà importés…");
+      const deja = await fichiersDejaImportes();
+      const file = fichiers.filter((f) => { if (deja.has(f.name)) { ignores++; return false; } deja.add(f.name); return true; });
+      const total = file.length; $("#barre").max = Math.max(1, total);
+      const suivant = async () => {
+        for (let f; (f = file.shift()); ) {
+          try {
+            const id = crypto.randomUUID();
+            const chemins = await envoyerPhoto(id, f);
+            const { error } = await sb.from("oeuvres").insert({ id, titre: f.name.replace(/\.[^.]+$/, "") || "Sans titre", fichier_origine: f.name, ...chemins });
+            if (error) { await sb.storage.from(BUCKET).remove([chemins.photo_path, chemins.vignette_path]); throw error; }
+            faits++;
+          } catch (err) {
+            erreurs++; const li = document.createElement("li"); li.textContent = `${f.name} : ${err.message || err}`; $("#journal").append(li);
+          }
+          traites++; $("#barre").value = traites;
+          maj(`${traites} / ${total} traitées — ${faits} importées, ${erreurs} en erreur, ${ignores} déjà présentes`);
+        }
+      };
+      await Promise.all([suivant(), suivant(), suivant()]);
+      maj(`Import terminé : ${faits} importées, ${erreurs} en erreur, ${ignores} déjà présentes (ignorées).`);
+    } catch (err) { maj("Import interrompu : " + (err.message || err)); }
+    enCours = false; fichiers = []; $("#lot").value = ""; $("#zone").textContent = "Choisir les photos";
+  });
+}
+
+/* ---------- Démarrage ---------- */
+sb.auth.onAuthStateChange((evenement, session) => {
+  if (evenement === "TOKEN_REFRESHED" || evenement === "USER_UPDATED") return;
+  setTimeout(() => demarrer(session), 0);
+});
+</script>
+</body>
+</html>
