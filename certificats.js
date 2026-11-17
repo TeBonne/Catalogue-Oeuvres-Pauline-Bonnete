@@ -330,6 +330,11 @@ async function vueCertificatNouveau(oeuvreId) {
   }
   const reproduction = (o.nature || "").toLowerCase().startsWith("reprod");
   const req = `<span class="req" aria-hidden="true">*</span>`;
+  // Le formulaire reprend la fiche : si elle est incomplète, on le dit clairement plutôt que de laisser des champs vides sans explication
+  const manquants = [
+    [!o.annee, "l'année"], [!o.technique, "la technique"], [!o.support, "le support"],
+    [!(o.hauteur_cm && o.largeur_cm), "les dimensions"], [!o.emplacement_signature, "l'emplacement de la signature"]
+  ].filter(([vide]) => vide).map(([, nom]) => nom);
   app.innerHTML = `
     <div class="etroit">
       ${entete("Nouveau certificat")}
@@ -337,6 +342,8 @@ async function vueCertificatNouveau(oeuvreId) {
         <section class="carte bloc">
           <div class="tete-cert"><img alt="" src="${esc(urlPhoto(o.vignette_path))}"><div><h2 style="margin:0">${esc(o.titre)}</h2>
             <p class="aide" style="margin:4px 0 0">Vérifiez les informations reprises de la fiche. Une fois émis, le certificat reçoit un numéro définitif et ne peut plus être modifié.</p></div></div>
+          ${manquants.length ? `<div class="message info"><strong>La fiche de cette œuvre est incomplète.</strong> Elle ne renseigne pas ${esc(manquants.length > 1 ? manquants.slice(0, -1).join(", ") + " ni " + manquants[manquants.length - 1] : manquants[0])} : les champs correspondants sont donc vides ci-dessous. Complétez la fiche pour qu'ils se remplissent automatiquement, ou saisissez-les ici pour ce seul certificat.
+            <div style="margin-top:10px"><button class="btn" type="button" id="c-completer" style="min-height:40px">Compléter la fiche</button></div></div>` : ""}
           ${reglages.signature_path ? "" : `<div class="message info">La signature de l'artiste n'est pas encore enregistrée. Le certificat pourra être imprimé et signé à la main ; la version signée sera disponible dès que la signature sera ajoutée dans Administration.</div>`}
           <label for="c-titre">Titre de l'œuvre ${req}</label><input id="c-titre" value="${esc(o.titre === "Sans titre" ? "" : o.titre)}" autocomplete="off">
           <div class="deux">
@@ -377,6 +384,7 @@ async function vueCertificatNouveau(oeuvreId) {
     </div>`;
   document.body.classList.add("barre-visible");
   $("#retour").addEventListener("click", retour); $("#c-annuler").addEventListener("click", retour);
+  if (manquants.length) $("#c-completer").addEventListener("click", retour);
   let texteModifie = false;
   const poserTexte = () => { if (!texteModifie) $("#c-texte").value = $("#c-nature").value === "Reproduction" ? reglages.texte_reproduction : reglages.texte_original; };
   poserTexte();
