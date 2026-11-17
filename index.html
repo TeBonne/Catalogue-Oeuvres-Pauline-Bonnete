@@ -398,6 +398,16 @@
     body.sel { padding-bottom: 130px; }
   }
 
+  /* Certificats */
+  .fiche-cert { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; gap: 8px 16px; align-items: baseline; }
+  .actions-cert { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tete-cert { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; }
+  .tete-cert img { width: 72px; height: 72px; object-fit: cover; border-radius: 4px; flex: none; background: #e9eae6; }
+  .signature-apercu { display: grid; place-items: center; min-height: 96px; margin: 10px 0; padding: 12px; border-radius: 12px; border: 1px dashed #c9cdc4; background: #fff; }
+  .signature-apercu img { max-width: 100%; max-height: 110px; }
+  #liste-certificats .vente .droite .badge { margin-bottom: 4px; }
+  @media (max-width: 600px) { .actions-cert .btn { flex: 1 1 100%; } }
+
   /* Navigation latérale */
   #lateral { box-shadow: 1px 0 0 var(--trait); border-right: 0; }
   .lat-marque { font: 700 1.3rem/1.1 var(--titre); letter-spacing: -.02em; }
@@ -576,7 +586,7 @@ async function envoyerPhoto(id, fichier) {
 }
 
 /* Fenêtre de confirmation : « Annuler » en bouton principal, action dangereuse inactive 2 secondes. */
-function confirmer({ titre, corps, vignette, action, annuler = "Annuler", delai = 2 }) {
+function confirmer({ titre, corps, vignette, action, annuler = "Annuler", delai = 2, ton = "danger" }) {
   return new Promise((resoudre) => {
     const voile = document.createElement("div"); voile.className = "voile";
     voile.innerHTML = `
@@ -584,8 +594,8 @@ function confirmer({ titre, corps, vignette, action, annuler = "Annuler", delai 
         <div class="tete">${vignette ? `<img alt="" src="${esc(vignette)}">` : ""}<h2 id="dlg-titre">${esc(titre)}</h2></div>
         <p id="dlg-corps">${esc(corps)}</p>
         <div style="display:grid;gap:10px">
-          <button class="btn plein large" data-r="non">${esc(annuler)}</button>
-          <button class="btn danger large" data-r="oui" ${delai ? "disabled" : ""}>${esc(action)}${delai ? ` (${delai})` : ""}</button>
+          <button class="btn ${ton === "neutre" ? "" : "plein"} large" data-r="non">${esc(annuler)}</button>
+          <button class="btn ${ton === "neutre" ? "plein" : "danger"} large" data-r="oui" ${delai ? "disabled" : ""}>${esc(action)}${delai ? ` (${delai})` : ""}</button>
         </div>
       </div>`;
     document.body.append(voile);
@@ -657,7 +667,7 @@ function majLateral(section) {
     ${lien("liste:pas_a_vendre", "Pas à vendre", etat.comptes.pas_a_vendre ?? "", point("pas_a_vendre"))}
     ${etat.admin ? `<div class="lat-titre">Suivi</div>${lien("ventes", "Suivi des ventes", null, ICONES.graphique)}` : ""}
     <div class="lat-titre">Documents</div>
-    <button class="lat-lien" disabled><span>${ICONES.document}<span>Certificats d'authenticité</span></span><span class="bientot">à venir</span></button>
+    ${etat.admin ? lien("certificats", "Certificats d'authenticité", null, ICONES.document) : `<button class="lat-lien" disabled><span>${ICONES.document}<span>Certificats d'authenticité</span></span></button>`}
     ${etat.admin ? `<div class="lat-titre">Maintenance</div>${lien("corbeille", "Corbeille", etat.enCorbeille, ICONES.corbeille)}` : ""}
     <div class="lat-bas"><button class="lat-lien" data-nav="sortir"><span>${ICONES.sortir}<span>Déconnexion</span></span></button></div>`;
   lateral.hidden = false; document.body.classList.add("avec-lateral");
@@ -670,6 +680,7 @@ lateral.addEventListener("click", async (e) => {
   if (nav === "admin") vueAdmin();
   else if (nav === "corbeille") vueCorbeille();
   else if (nav === "ventes") vueVentes();
+  else if (nav === "certificats") vueCertificats();
   else if (nav === "sortir") sb.auth.signOut();
   else { etat.statut = nav.slice(6); vueListe(); }
 });
@@ -1137,6 +1148,10 @@ async function vueFiche(id, origine) {
             </select></div>
         </div>
 
+        <label for="emplacement_signature">Emplacement de la signature</label>
+        <input id="emplacement_signature" list="l-emplacement-fiche" autocomplete="off" value="${esc(o.emplacement_signature)}" placeholder="Par exemple : en bas à gauche">
+        <datalist id="l-emplacement-fiche">${EMPLACEMENTS.map((v) => `<option value="${esc(v)}">`).join("")}</datalist>
+
         <h2 class="section">Vente</h2>
         <label for="prix">Prix (€)</label>
         <input id="prix" class="champ-court" inputmode="decimal" autocomplete="off" value="${esc(String(o.prix_eur ?? "").replace(".", ","))}">
@@ -1154,7 +1169,7 @@ async function vueFiche(id, origine) {
         <p class="aide" id="notes-aide">Acheteur, date de vente… Ces notes ne sont jamais publiées.</p>
 
         ${id ? `<div class="zone-danger actions-fiche">
-          <button class="btn plein" type="button" id="certificat">Générer le certificat d'authenticité</button>
+          ${etat.admin ? `<button class="btn plein" type="button" id="certificat">Générer le certificat d'authenticité</button>` : ""}
           <button class="btn danger" type="button" id="supprimer">Supprimer</button>
         </div>` : ""}
       </div>
@@ -1224,7 +1239,7 @@ async function vueFiche(id, origine) {
       nature: texte($("#nature").value), serie: texte($("#serie").value),
       hauteur_cm: h, largeur_cm: l, annee: a, prix_eur: p, prix_masque: $("#prix_masque").checked,
       encadre: $("#encadre").value === "" ? null : $("#encadre").value === "oui",
-      description: texte($("#description").value),
+      description: texte($("#description").value), emplacement_signature: texte($("#emplacement_signature").value),
       notes_privees: texte($("#notes").value), champs_perso: cp
     };
     const bouton = $("#valider"); bouton.disabled = true; bouton.setAttribute("aria-busy", "true"); bouton.textContent = "Enregistrement…"; alerte("");
@@ -1244,8 +1259,10 @@ async function vueFiche(id, origine) {
   });
 
   if (id) {
-    // La génération elle-même reste à construire : le bouton l'annonce au lieu de ne rien faire.
-    $("#certificat").addEventListener("click", () => bandeau("La génération du certificat n'est pas encore disponible."));
+    if (etat.admin) $("#certificat").addEventListener("click", () => {
+      if (etat.modifie) return bandeau("Enregistrez d'abord vos modifications : le certificat reprend la fiche enregistrée.");
+      vueCertificatNouveau(id);
+    });
     const b = $("#supprimer");
     b.addEventListener("click", async () => {
       const accord = await confirmer({
@@ -1503,6 +1520,7 @@ async function vueAdmin(message = "", type = "info") {
         <p class="sous">${enCorbeille ? `${enCorbeille} œuvre${enCorbeille > 1 ? "s" : ""} supprimée${enCorbeille > 1 ? "s" : ""}, à restaurer ou à effacer définitivement.` : "Aucune œuvre dans la corbeille."}</p>
         <button class="btn large" id="corbeille">Ouvrir la corbeille</button>
       </section>
+      <div id="reglages-certificats"></div>
       <h2 style="margin-top:22px">Champs des fiches</h2>
       ${etat.champs.map(carte).join("")}
       <section class="carte bloc">
@@ -1517,6 +1535,7 @@ async function vueAdmin(message = "", type = "info") {
     </div>`;
   $("#retour").addEventListener("click", vueListe);
   $("#corbeille").addEventListener("click", () => vueCorbeille());
+  monterReglagesCertificats();
   const erreur = (m) => { $("#alerte").innerHTML = `<div class="message erreur">${m}</div>`; window.scrollTo(0, 0); };
   const verifier = (res) => { if (res.error) throw res.error; if (res.data && !res.data.length) throw new Error("Modification refusée : droits insuffisants."); };
 
@@ -1664,5 +1683,6 @@ sb.auth.onAuthStateChange((evenement, session) => {
   setTimeout(() => demarrer(session), 0);
 });
 </script>
+<script src="certificats.js"></script>
 </body>
 </html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f2f3f0">
+<link rel="icon" type="image/png" href="favicon.png">
+<title>Vérification d'un certificat — Pauline Bonneté</title>
+<style>
+  @font-face { font-family: "Bricolage Grotesque"; src: url("polices/bricolage-grotesque.woff2") format("woff2-variations"); font-weight: 200 800; font-display: swap; }
+  @font-face { font-family: "Instrument Sans"; src: url("polices/instrument-sans.woff2") format("woff2-variations"); font-weight: 400 700; font-display: swap; }
+  :root { --fond: #f2f3f0; --encre: #171c26; --doux: #5b6472; --trait: #e1e3de; --vert: #1e5b33; --vert-pale: #ddf2e3; --rouge: #8f2413; --rouge-pale: #fadfd9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--fond); color: var(--encre);
+    font: 16px/1.5 "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { width: 100%; max-width: 460px; }
+  .artiste { font: 700 1.25rem/1.1 "Bricolage Grotesque", sans-serif; letter-spacing: -.02em; margin: 0 0 18px; color: var(--encre); }
+  .carte { background: #fff; border-radius: 18px; padding: 24px; box-shadow: 0 0 0 1px rgba(23,28,38,.06), 0 12px 30px -18px rgba(23,28,38,.3); }
+  h1 { font: 700 1.5rem/1.2 "Bricolage Grotesque", sans-serif; letter-spacing: -.02em; margin: 14px 0 6px; }
+  .etat { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-weight: 600; font-size: .9rem; }
+  .etat svg { width: 18px; height: 18px; }
+  .valide { background: var(--vert-pale); color: var(--vert); }
+  .annule, .inconnu { background: var(--rouge-pale); color: var(--rouge); }
+  .attente { background: #e7e8e4; color: var(--doux); }
+  p { margin: 0 0 12px; color: var(--doux); }
+  p.artiste { color: var(--encre); }
+  dl { display: grid; grid-template-columns: minmax(110px, 38%) 1fr; gap: 8px 16px; margin: 18px 0 0; padding-top: 18px; border-top: 1px solid var(--trait); }
+  dt { color: var(--doux); font-size: .9rem; }
+  dd { margin: 0; font-weight: 500; }
+  .pied { margin-top: 16px; font-size: .85rem; color: var(--doux); text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <p class="artiste">Pauline Bonneté</p>
+  <div class="carte" id="resultat" aria-live="polite">
+    <span class="etat attente">Vérification en cours…</span>
+  </div>
+  <p class="pied">Cette page confirme qu'un certificat d'authenticité a bien été émis par l'artiste.</p>
+</main>
+<script>
+"use strict";
+const SUPABASE_URL = "https://yvgdxhzeyvubmfzeejia.supabase.co";
+const SUPABASE_CLE = "sb_publishable__RZy5M7fjfUObsQqjHFjsw_jqfSaOJb"; // clé publique ; la fonction appelée ne renvoie jamais l'acheteur
+const zone = document.getElementById("resultat");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const dateFr = (iso) => { const [a, m, j] = String(iso).split("-"); return `${j}/${m}/${a}`; };
+const COCHE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>';
+const CROIX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const ligne = (l, v) => (v ? `<dt>${esc(l)}</dt><dd>${esc(v)}</dd>` : "");
+
+async function verifier() {
+  const code = new URLSearchParams(location.search).get("c") || "";
+  if (!/^[0-9a-f]{32}$/.test(code)) {
+    zone.innerHTML = `<span class="etat inconnu">${CROIX}Lien incomplet</span><h1>Aucun certificat à vérifier</h1>
+      <p>Ce lien ne contient pas de code de certificat valide. Scannez de nouveau le code QR figurant sur le certificat.</p>`;
+    return;
+  }
+  let c;
+  try {
+    const rep = await fetch(`${SUPABASE_URL}/rest/v1/rpc/verifier_certificat`, {
+      method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_CLE, Authorization: `Bearer ${SUPABASE_CLE}` },
+      body: JSON.stringify({ p_code: code })
+    });
+    if (!rep.ok) throw new Error(String(rep.status));
+    c = await rep.json();
+  } catch (e) {
+    zone.innerHTML = `<span class="etat attente">Vérification impossible</span><h1>Le service ne répond pas</h1>
+      <p>La vérification n'a pas pu aboutir. Vérifiez votre connexion, puis réessayez dans quelques minutes.</p>`;
+    return;
+  }
+  if (!c || !c.trouve) {
+    zone.innerHTML = `<span class="etat inconnu">${CROIX}Certificat inconnu</span><h1>Ce certificat n'existe pas</h1>
+      <p>Aucun certificat émis par l'artiste ne correspond à ce code. Si vous détenez ce document, contactez l'artiste.</p>`;
+    return;
+  }
+  const valide = c.statut === "valide";
+  zone.innerHTML = `
+    <span class="etat ${valide ? "valide" : "annule"}">${valide ? COCHE + "Certificat authentique" : CROIX + "Certificat annulé"}</span>
+    <h1>${esc(c.titre)}</h1>
+    <p>${valide
+      ? `Ce certificat a bien été émis par ${esc(c.artiste)}. Comparez les informations ci-dessous avec celles du document que vous détenez.`
+      : `Ce certificat a été émis par ${esc(c.artiste)}, puis annulé. Il n'est plus valable.`}</p>
+    <dl>
+      ${ligne("Numéro", c.numero)}${ligne("Artiste", c.artiste)}${ligne("Année de création", c.annee)}${ligne("Technique", c.technique)}
+      ${ligne("Dimensions", c.dimensions)}${ligne("Nature", c.nature === "Reproduction" ? "Reproduction" : "Œuvre originale")}
+      ${ligne("Émis", `${c.lieu ? `à ${c.lieu}, ` : ""}le ${dateFr(c.emis_le)}`)}
+    </dl>`;
+}
+verifier();
+</script>
+</body>
+</html>
