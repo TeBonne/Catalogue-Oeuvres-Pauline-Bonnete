@@ -416,25 +416,16 @@
   #liste-certificats .vente .droite .badge { margin-bottom: 4px; }
   @media (max-width: 600px) { .actions-cert .btn { flex: 1 1 100%; } }
 
-  /* Écran de connexion : l'œuvre encadrée sur le mur, et sa couleur diffusée en fond */
-  .accueil { position: relative; min-height: calc(100dvh - 130px); display: grid; align-content: center; justify-items: center; gap: 26px; }
-  .accueil-fond { position: fixed; inset: -70px; z-index: 0; overflow: hidden; background: center / cover no-repeat; filter: blur(34px) saturate(1.2); opacity: 0; transition: opacity 1.2s ease; }
-  .accueil-fond.pret { opacity: .9; }
-  .accueil-fond::after { content: ""; position: absolute; inset: 0; background: rgba(242,243,240,.28); }
+  /* Écran de connexion : une œuvre en fond, sur tout l'écran */
+  .accueil { position: relative; min-height: calc(100dvh - 130px); display: grid; align-content: center; justify-items: center; }
+  .accueil-fond { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: center / cover no-repeat; opacity: 0; transition: opacity 1.2s ease; }
+  .accueil-fond.pret { opacity: 1; }
+  .accueil-fond::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(23,28,38,.10), rgba(23,28,38,.28)); }
   .accueil-fond .rogne { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
   .rogne { position: relative; overflow: hidden; }
   .rogne img { position: absolute; max-width: none; height: auto; }
-  .accueil-oeuvre {
-    position: relative; z-index: 1; margin: 0; width: 100%; max-width: 190px; padding: 14px; background: #fff; border-radius: 3px;
-    box-shadow: 0 0 0 1px rgba(23,28,38,.08), 0 2px 3px rgba(23,28,38,.12), 0 30px 50px -22px rgba(23,28,38,.6); animation: monte .7s var(--ressort) both;
-  }
-  .accueil-oeuvre .rogne, .accueil-oeuvre img.libre { box-shadow: 0 0 0 1px rgba(23,28,38,.12), 0 1px 3px rgba(23,28,38,.25); }
-  .accueil-oeuvre img.libre { display: block; width: 100%; height: auto; }
-  .accueil-carte { position: relative; z-index: 1; width: 100%; max-width: 420px; box-shadow: 0 0 0 1px rgba(23,28,38,.06), 0 30px 60px -24px rgba(23,28,38,.45); }
-  @media (min-width: 900px) {
-    .accueil.avec-oeuvre { grid-template-columns: minmax(0, 400px) minmax(0, 420px); justify-content: center; align-items: center; gap: 72px; }
-    .accueil-oeuvre { max-width: 400px; padding: 30px; }
-  }
+  .accueil-carte { position: relative; z-index: 1; width: 100%; max-width: 420px; box-shadow: 0 0 0 1px rgba(23,28,38,.08), 0 30px 70px -20px rgba(10,14,24,.7); animation: monte .6s var(--ressort) both; }
+  .accueil.avec-oeuvre .accueil-carte { background: rgba(255,255,255,.93); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3); }
 
   /* Éditeur de photo */
   body.editeur-ouvert { overflow: hidden; }
@@ -754,20 +745,14 @@ const ACCUEIL_DEFAUT = { // photo d'origine : capture d'écran dont seule la pei
   chemin: "f8f56689-d5f0-40b2-a792-5542aae78b1d/photo-1794934478620.jpg", largeur: 738, x: 128, y: 402, l: 514, h: 753
 };
 function monterAccueil() {
-  const fond = $("#accueil-fond"), cadre = $("#accueil-oeuvre"); if (!fond || !cadre) return;
-  const poser = (adresse, rogne) => {
+  const fond = $("#accueil-fond"); if (!fond) return;
+  const poser = (adresse, rogne) => { // l'œuvre occupe tout le fond de l'écran
     if (!fond.isConnected) return;
     if (rogne) {
       const style = `width:${(rogne.largeur / rogne.l) * 100}%;left:${(-rogne.x / rogne.l) * 100}%;top:${(-rogne.y / rogne.h) * 100}%`;
-      const bloc = `<div class="rogne" style="aspect-ratio:${rogne.l}/${rogne.h}"><img alt="" src="${esc(adresse)}" style="${style}"></div>`;
-      fond.innerHTML = bloc; fond.firstChild.style.width = `max(calc(100vw + 140px), calc((100vh + 140px) * ${rogne.l / rogne.h}))`;
-      cadre.innerHTML = bloc;
-    } else {
-      fond.style.backgroundImage = `url("${adresse}")`;
-      cadre.innerHTML = `<img class="libre" alt="" src="${esc(adresse)}">`;
-    }
-    cadre.querySelector("img").alt = "Une œuvre de Pauline Bonneté";
-    cadre.hidden = false; fond.classList.add("pret"); $("#accueil").classList.add("avec-oeuvre");
+      fond.innerHTML = `<div class="rogne" style="aspect-ratio:${rogne.l}/${rogne.h};width:max(100vw, calc(100vh * ${rogne.l / rogne.h}))"><img alt="" src="${esc(adresse)}" style="${style}"></div>`;
+    } else fond.style.backgroundImage = `url("${adresse}")`;
+    fond.classList.add("pret"); $("#accueil").classList.add("avec-oeuvre");
   };
   const essayer = (adresse, alors, sinon) => { const i = new Image(); i.onload = alors; i.onerror = sinon; i.src = adresse; };
   const choisie = urlPhoto(ACCUEIL_CHOISIE) + "?v=" + Math.floor(Date.now() / 600000), defaut = urlPhoto(ACCUEIL_DEFAUT.chemin);
@@ -780,7 +765,6 @@ function vueConnexion(message = "", type = "erreur") {
   app.innerHTML = `
     <div class="accueil" id="accueil">
     <div class="accueil-fond" id="accueil-fond" aria-hidden="true"></div>
-    <figure class="accueil-oeuvre" id="accueil-oeuvre" hidden></figure>
     <div class="carte accueil-carte">
       <h1 style="font-size:1.9rem">Pauline Bonneté</h1>
       <p class="sous" style="margin-top:6px">Ma vie, mes œuvres</p>
