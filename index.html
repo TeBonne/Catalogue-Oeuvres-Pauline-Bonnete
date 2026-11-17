@@ -359,6 +359,38 @@
   .liste .squelette { aspect-ratio: auto; height: 80px; border-radius: var(--rayon); }
   @keyframes miroite { to { background-position: -150% 0; } }
 
+  /* Sélection multiple */
+  .outils-droite { display: flex; align-items: center; gap: 8px; flex: none; }
+  .btn.discret { min-height: 38px; padding: 0 14px; font-size: .88rem; border-color: transparent; background: none; color: var(--accent); }
+  .btn.discret:hover:not([disabled]) { background: var(--accent-pale); border-color: transparent; }
+  .coche-sel {
+    display: none; place-items: center; width: 26px; height: 26px; border-radius: 8px; flex: none; color: transparent;
+    background: #fff; border: 2px solid #aeb3a9; transition: background-color .15s, border-color .15s, transform .2s var(--ressort);
+  }
+  .coche-sel svg { width: 16px; height: 16px; stroke-width: 3; }
+  .selection .coche-sel { display: grid; }
+  .oeuvre .coche-sel { position: absolute; top: 8px; left: 8px; z-index: 1; box-shadow: 0 2px 6px rgba(23,28,38,.25); }
+  .choisie .coche-sel { background: var(--accent); border-color: var(--accent); color: #fff; transform: scale(1.06); }
+  .oeuvre.choisie .cadre { box-shadow: 0 0 0 3px var(--accent), 0 10px 20px -12px rgba(23,28,38,.35); }
+  .ligne.choisie { box-shadow: 0 0 0 2px var(--accent); background: #fbfbff; }
+  .selection .oeuvre:hover .cadre { transform: none; }
+  .barre-bas .contenu.sel { flex-wrap: wrap; align-items: center; }
+  .barre-bas .contenu.sel .rappel { display: flex; align-items: center; gap: 6px; flex: 1 1 100%; min-width: 0; }
+  .barre-bas .contenu.sel .rappel strong { flex: 1; }
+  .barre-bas .contenu.sel .btn.icone-seule, .barre-bas .contenu.sel .btn.discret { flex: none; }
+  .barre-bas .contenu.sel .btn { white-space: nowrap; }
+  .contenu.sel .court { display: none; }
+  @media (max-width: 600px) { .contenu.sel .long { display: none; } .contenu.sel .court { display: inline; } }
+  body.sel { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+  .dialogue.large { max-width: 460px; }
+  .dialogue .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+  @media (min-width: 900px) {
+    .barre-bas .contenu.sel { flex-wrap: nowrap; }
+    .barre-bas .contenu.sel .rappel { flex: 1 1 auto; }
+    .barre-bas .contenu.sel > .btn { flex: 0 0 auto; }
+    body.sel { padding-bottom: 110px; }
+  }
+
   /* Navigation latérale */
   #lateral { box-shadow: 1px 0 0 var(--trait); border-right: 0; }
   .lat-marque { font: 700 1.3rem/1.1 var(--titre); letter-spacing: -.02em; }
@@ -452,7 +484,7 @@ try { vueMemorisee = localStorage.getItem("catalogue-vue") === "liste" ? "liste"
 const LIBELLES_DEFAUT = { technique: "Technique", support: "Support", nature: "Nature" };
 const TYPES = { texte: "Texte", nombre: "Nombre", liste: "Liste de choix", case: "Case à cocher" };
 const lateral = document.getElementById("lateral");
-const etat = { ventes: { grain: "mois", annee: null, periode: null }, jeton: 0, retour: null, gardien: null, modifie: false, adminOuvert: null, section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
+const etat = { selection: null, dernier: null, ventes: { grain: "mois", annee: null, periode: null }, jeton: 0, retour: null, gardien: null, modifie: false, adminOuvert: null, section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
 
 /* ---------- Utilitaires ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -472,6 +504,7 @@ const ICONES = {
 };
 ICONES.cadre = svg('<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="8" y="8" width="8" height="8"/>');
 ICONES.document = svg('<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>');
+ICONES.fermer = svg('<path d="M6 6l12 12M18 6L6 18"/>');
 ICONES.graphique = svg('<path d="M5 20V11M12 20V4M19 20v-6"/>');
 const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 const MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -745,6 +778,7 @@ function dessinerGrille() {
   } else if (etat.vue === "liste") {
     zone.innerHTML = etat.items.map((o) => `
       <button class="ligne" data-id="${o.id}">
+        <span class="coche-sel" aria-hidden="true">${ICONES.valider}</span>
         <img class="fondu" loading="lazy" alt="" src="${esc(urlPhoto(o.vignette_path))}">
         <div class="corps">
           <div class="titre">${o.statut === "vendu" ? `<span class="pastille" role="img" aria-label="Œuvre vendue" title="Œuvre vendue"></span>` : ""}${esc(o.titre)}</div>
@@ -755,6 +789,7 @@ function dessinerGrille() {
   } else {
     zone.innerHTML = etat.items.map((o) => `
       <button class="oeuvre" data-id="${o.id}">
+        <span class="coche-sel" aria-hidden="true">${ICONES.valider}</span>
         <div class="cadre"><img class="fondu" loading="lazy" alt="" src="${esc(urlPhoto(o.vignette_path))}"></div>
         <div class="txt">
           <div class="titre">${o.statut === "vendu" ? `<span class="pastille" role="img" aria-label="Œuvre vendue" title="Œuvre vendue"></span>` : ""}${esc(o.titre)}</div>
@@ -767,6 +802,7 @@ function dessinerGrille() {
   $("#plus").hidden = reste <= 0;
   $("#plus").textContent = `Afficher plus (${reste} restantes)`;
   $("#resume").textContent = `${etat.total} œuvre${etat.total > 1 ? "s" : ""}${etat.statut || etat.q.trim() ? ` sur ${etat.total_general}` : ""}`;
+  majSelection();
 }
 
 async function rafraichirListe(avecComptes, pages = 1) {
@@ -780,6 +816,7 @@ async function rafraichirListe(avecComptes, pages = 1) {
 }
 
 function vueListe() {
+  etat.selection = null; etat.dernier = null; document.body.classList.remove("sel");
   majLateral("liste:" + etat.statut);
   const retour = etat.retour; etat.retour = null;
   app.innerHTML = `
@@ -799,21 +836,49 @@ function vueListe() {
     <div class="puces" id="puces" role="group" aria-label="Filtrer par statut"></div>
     <div class="outils">
       <div class="sous" id="resume" aria-live="polite"></div>
+      <div class="outils-droite"><button class="btn discret" id="sel-entrer">Sélectionner</button>
       <div class="segment icones" id="bascule" role="group" aria-label="Mode d'affichage">
         <button data-vue="grille" title="Afficher en vignettes"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg><span class="lib">Vignettes</span></button>
         <button data-vue="liste" title="Afficher en liste"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="4" height="4" rx="1"/><rect x="8" y="4" width="10" height="2" rx="1"/><rect x="2" y="8" width="4" height="4" rx="1"/><rect x="8" y="9" width="10" height="2" rx="1"/><rect x="2" y="13" width="4" height="4" rx="1"/><rect x="8" y="14" width="10" height="2" rx="1"/></svg><span class="lib">Liste</span></button>
-      </div>
+      </div></div>
     </div>
     <div class="${etat.vue === "liste" ? "liste" : "grille"}" id="grille" aria-busy="true">${'<div class="squelette"></div>'.repeat(etat.vue === "liste" ? 6 : 8)}</div>
     <p style="text-align:center;margin-top:16px"><button class="btn" id="plus" hidden></button></p>
     <div class="barre-bas mobile"><div class="contenu">
       <button class="btn" data-go="import">Importer</button>
       <button class="btn plein" data-go="ajouter">${ICONES.plus}Ajouter une œuvre</button>
+    </div></div>
+    <div class="barre-bas" id="barre-selection" hidden><div class="contenu sel">
+      <div class="rappel">
+        <button class="btn icone-seule" id="sel-quitter" aria-label="Quitter la sélection" title="Quitter la sélection">${ICONES.fermer}</button>
+        <strong id="sel-compte" aria-live="polite"></strong>
+        <button class="btn discret" id="sel-tout"></button>
+      </div>
+      <button class="btn" id="sel-modifier">Modifier un champ</button>
+      <button class="btn danger" id="sel-corbeille"><span class="long">Mettre à la corbeille</span><span class="court">Corbeille</span></button>
     </div></div>`;
   let minuterie;
   $("#q").addEventListener("input", (e) => { clearTimeout(minuterie); minuterie = setTimeout(() => { etat.q = e.target.value; rafraichirListe(false); }, 300); });
   $("#puces").addEventListener("click", (e) => { const b = e.target.closest(".puce"); if (!b) return; etat.statut = b.dataset.statut; dessinerPuces(); majLateral("liste:" + etat.statut); rafraichirListe(false); });
-  $("#grille").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) vueFiche(b.dataset.id); });
+  $("#grille").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-id]"); if (!b) return;
+    if (!etat.selection) return vueFiche(b.dataset.id);
+    const ids = etat.items.map((o) => o.id), i = ids.indexOf(b.dataset.id);
+    if (e.shiftKey && etat.dernier != null && etat.dernier !== i) { // Maj + clic : sélectionne toute la plage
+      for (let k = Math.min(i, etat.dernier); k <= Math.max(i, etat.dernier); k++) etat.selection.add(ids[k]);
+    } else if (etat.selection.has(b.dataset.id)) etat.selection.delete(b.dataset.id);
+    else etat.selection.add(b.dataset.id);
+    etat.dernier = i; majSelection();
+  });
+  $("#sel-entrer").addEventListener("click", () => { etat.selection = new Set(); etat.dernier = null; majSelection(); });
+  $("#sel-quitter").addEventListener("click", () => { etat.selection = null; majSelection(); });
+  $("#sel-tout").addEventListener("click", async () => {
+    if (etat.selection.size >= etat.total) { etat.selection = new Set(); return majSelection(); }
+    try { etat.selection = new Set(await idsFiltres()); majSelection(); }
+    catch (e) { bandeau("La sélection a échoué : " + (e.message || e)); }
+  });
+  $("#sel-corbeille").addEventListener("click", selectionCorbeille);
+  $("#sel-modifier").addEventListener("click", selectionModifier);
   $("#bascule").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-vue]"); if (!b) return;
     etat.vue = b.dataset.vue;
@@ -826,6 +891,160 @@ function vueListe() {
   $("#sortir").addEventListener("click", () => sb.auth.signOut());
   if (!retour) window.scrollTo(0, 0);
   rafraichirListe(true, retour ? retour.pages : 1).then(() => { if (retour && $("#grille")) window.scrollTo(0, retour.y); });
+}
+
+/* ---------- Sélection multiple et actions en lot ---------- */
+function majSelection() {
+  const zone = $("#grille"), barre = $("#barre-selection"); if (!zone || !barre) return;
+  const actif = !!etat.selection, n = actif ? etat.selection.size : 0;
+  zone.classList.toggle("selection", actif);
+  zone.querySelectorAll("[data-id]").forEach((b) => {
+    const choisie = actif && etat.selection.has(b.dataset.id);
+    b.classList.toggle("choisie", choisie);
+    if (actif) b.setAttribute("aria-pressed", String(choisie)); else b.removeAttribute("aria-pressed");
+  });
+  barre.hidden = !actif; app.querySelector(".barre-bas.mobile").hidden = actif; $("#sel-entrer").hidden = actif;
+  document.body.classList.toggle("sel", actif);
+  $("#sel-compte").innerHTML = n ? `${n} <span class="long">œuvre${n > 1 ? "s" : ""} </span>sélectionnée${n > 1 ? "s" : ""}` : "Touchez les œuvres";
+  $("#sel-modifier").disabled = $("#sel-corbeille").disabled = !n;
+  $("#sel-tout").textContent = n && n >= etat.total ? "Tout désélectionner" : `Tout sélectionner (${etat.total})`;
+  $("#sel-tout").setAttribute("aria-label", n && n >= etat.total ? "Tout désélectionner" : `Sélectionner les ${etat.total} œuvres affichées par ce filtre`);
+  $("#sel-tout").hidden = !etat.total;
+}
+
+async function idsFiltres() {
+  const ids = [];
+  for (let debut = 0; ; debut += 1000) {
+    const { data, error } = await filtrer(sb.from("oeuvres").select("id")).order("id").range(debut, debut + 999);
+    if (error) throw error;
+    ids.push(...data.map((x) => x.id));
+    if (data.length < 1000) break;
+  }
+  return ids;
+}
+
+async function parLots(ids, action) {
+  for (let i = 0; i < ids.length; i += 150) { const { error } = await action(ids.slice(i, i + 150)); if (error) throw error; }
+}
+
+async function selectionCorbeille() {
+  const ids = [...etat.selection], n = ids.length, pl = n > 1 ? "s" : "";
+  const accord = await confirmer({
+    titre: `Mettre ${n} œuvre${pl} à la corbeille ?`,
+    corps: `${n > 1 ? "Elles seront retirées" : "Elle sera retirée"} du catalogue. Un administrateur pourra ${n > 1 ? "les" : "la"} restaurer depuis la corbeille.`,
+    action: "Mettre à la corbeille"
+  });
+  if (!accord) return;
+  try {
+    const quand = new Date().toISOString();
+    await parLots(ids, (lot) => sb.from("oeuvres").update({ supprime_le: quand }).in("id", lot));
+  } catch (e) { vueListe(); return bandeau("La mise à la corbeille a échoué : " + (e.message || e)); }
+  vueListe();
+  bandeau(`${n} œuvre${pl} placée${pl} dans la corbeille`, "Annuler", async () => {
+    try { await parLots(ids, (lot) => sb.from("oeuvres").update({ supprime_le: null }).in("id", lot)); }
+    catch (e) { bandeau("L'annulation a échoué : " + (e.message || e)); }
+    vueListe();
+  });
+}
+
+/* Fenêtre « Modifier un champ » : renvoie les colonnes à mettre à jour, ou null si l'utilisateur renonce. */
+function demanderChamp(n) {
+  const listeConfig = (cle) => [["", "Aucune valeur (vider le champ)"], ...champSysteme(cle).options.map((v) => [v, v])];
+  const CHAMPS = [
+    { cle: "statut", libelle: "Statut", options: () => Object.entries(STATUTS) },
+    { cle: "technique", libelle: champSysteme("technique").libelle, options: () => listeConfig("technique") },
+    { cle: "support", libelle: champSysteme("support").libelle, options: () => listeConfig("support") },
+    { cle: "nature", libelle: champSysteme("nature").libelle, options: () => listeConfig("nature") },
+    { cle: "serie", libelle: "Série ou thème", saisie: "text" },
+    { cle: "annee", libelle: "Année", saisie: "numeric" },
+    { cle: "prix_eur", libelle: "Prix (€)", saisie: "decimal" },
+    { cle: "prix_masque", libelle: "Affichage du prix sur le site web", options: () => [["non", "Afficher le prix"], ["oui", "Ne pas afficher le prix"]] },
+    { cle: "encadre", libelle: "Encadrement", options: () => [["", "Non renseigné"], ["oui", "Encadré"], ["non", "Non encadré"]] }
+  ];
+  return new Promise((resoudre) => {
+    const voile = document.createElement("div"); voile.className = "voile";
+    voile.innerHTML = `
+      <div class="dialogue large" role="dialog" aria-modal="true" aria-labelledby="lot-titre">
+        <h2 id="lot-titre">Modifier un champ pour ${n} œuvre${n > 1 ? "s" : ""}</h2>
+        <label for="lot-champ">Champ à modifier</label>
+        <select id="lot-champ">${CHAMPS.map((c, i) => `<option value="${i}">${esc(c.libelle)}</option>`).join("")}</select>
+        <label for="lot-valeur">Nouvelle valeur</label>
+        <div id="lot-zone"></div>
+        <p class="aide" id="lot-aide"></p>
+        <div id="lot-erreur" role="alert"></div>
+        <div class="actions">
+          <button class="btn" data-r="non">Annuler</button>
+          <button class="btn plein" data-r="oui">Appliquer</button>
+        </div>
+      </div>`;
+    document.body.append(voile);
+    const q = (sel) => voile.querySelector(sel);
+    const champ = () => CHAMPS[+q("#lot-champ").value];
+    const dessinerValeur = () => {
+      const c = champ();
+      q("#lot-zone").innerHTML = c.options
+        ? `<select id="lot-valeur">${c.options().map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("")}</select>`
+        : `<input id="lot-valeur" inputmode="${c.saisie}" autocomplete="off" placeholder="Laisser vide pour effacer la valeur">`;
+      q("#lot-aide").textContent = c.cle === "statut"
+        ? "Une œuvre vendue qui passe à un autre statut perd son prix de vente et sa date de vente."
+        : `La valeur actuelle de ce champ sera remplacée sur ${n > 1 ? "toutes les œuvres sélectionnées" : "l'œuvre sélectionnée"}.`;
+      q("#lot-erreur").innerHTML = "";
+    };
+    const lire = () => {
+      const c = champ(), v = q("#lot-valeur").value;
+      if (c.cle === "statut") return v === "vendu" ? { statut: v } : { statut: v, prix_vendu_eur: null, date_vente: null };
+      if (c.cle === "prix_masque") return { prix_masque: v === "oui" };
+      if (c.cle === "encadre") return { encadre: v === "" ? null : v === "oui" };
+      if (c.cle === "annee") {
+        const a = nombre(v);
+        if (texte(v) && !(Number.isInteger(a) && a >= 1900 && a <= 2100)) throw new Error("L'année doit comporter quatre chiffres, par exemple 2024.");
+        return { annee: a };
+      }
+      if (c.cle === "prix_eur") {
+        const p = nombre(v);
+        if (texte(v) && (p === null || p < 0)) throw new Error("Le prix doit être un nombre, par exemple 450.");
+        return { prix_eur: p };
+      }
+      return { [c.cle]: texte(v) };
+    };
+    const clavier = (e) => { if (e.key === "Escape") fermer(null); };
+    const fermer = (r) => { document.removeEventListener("keydown", clavier); voile.remove(); resoudre(r); };
+    document.addEventListener("keydown", clavier);
+    q("#lot-champ").addEventListener("change", dessinerValeur);
+    voile.addEventListener("click", (e) => {
+      if (e.target === voile) return fermer(null);
+      const b = e.target.closest("[data-r]"); if (!b) return;
+      if (b.dataset.r === "non") return fermer(null);
+      try { fermer(lire()); }
+      catch (err) { q("#lot-erreur").innerHTML = `<div class="message erreur">${msgErreur(err)}</div>`; q("#lot-valeur").setAttribute("aria-invalid", "true"); q("#lot-valeur").focus(); }
+    });
+    dessinerValeur();
+    q("#lot-champ").focus();
+  });
+}
+
+async function selectionModifier() {
+  const ids = [...etat.selection], n = ids.length, pl = n > 1 ? "s" : "";
+  const maj = await demanderChamp(n);
+  if (!maj) return;
+  const colonnes = ["id", ...Object.keys(maj)].join(",");
+  const avant = [];
+  try {
+    for (let i = 0; i < ids.length; i += 150) { // valeurs d'origine, pour pouvoir annuler
+      const { data, error } = await sb.from("oeuvres").select(colonnes).in("id", ids.slice(i, i + 150));
+      if (error) throw error;
+      avant.push(...data);
+    }
+    await parLots(ids, (lot) => sb.from("oeuvres").update(maj).in("id", lot));
+  } catch (e) { vueListe(); return bandeau("La modification a échoué : " + (e.message || e)); }
+  vueListe();
+  bandeau(`${n} œuvre${pl} modifiée${pl}`, "Annuler", async () => {
+    const groupes = new Map();
+    avant.forEach(({ id, ...valeurs }) => { const k = JSON.stringify(valeurs); if (!groupes.has(k)) groupes.set(k, { valeurs, ids: [] }); groupes.get(k).ids.push(id); });
+    try { for (const g of groupes.values()) await parLots(g.ids, (lot) => sb.from("oeuvres").update(g.valeurs).in("id", lot)); }
+    catch (e) { bandeau("L'annulation a échoué : " + (e.message || e)); }
+    vueListe();
+  });
 }
 
 /* ---------- Fiche (ajout / modification) ---------- */
