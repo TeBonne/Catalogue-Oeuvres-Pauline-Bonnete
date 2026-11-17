@@ -359,9 +359,9 @@ async function vueFiche(id) {
       </div>
       <div class="deux">
         <div><label for="annee">Année <span class="opt">(facultatif)</span></label><input id="annee" inputmode="numeric" maxlength="4" value="${esc(o.annee)}"></div>
-        <div><label for="prix">Prix en € <span class="opt">(facultatif)</span></label><input id="prix" inputmode="decimal" value="${esc(String(o.prix_eur ?? "").replace(".", ","))}"></div>
+        <div><label for="prix">Prix en € <span class="opt">(facultatif)</span></label><input id="prix" inputmode="decimal" value="${esc(String(o.prix_eur ?? "").replace(".", ","))}">
+          <label class="coche" for="prix_masque"><input id="prix_masque" type="checkbox" ${o.prix_masque ? "checked" : ""}> Ne pas afficher le prix sur le site web</label></div>
       </div>
-      <label class="coche" for="prix_masque"><input id="prix_masque" type="checkbox" ${o.prix_masque ? "checked" : ""}> Ne pas afficher le prix sur le site web</label>
       <label for="encadre">Encadrement <span class="opt">(facultatif)</span></label>
       <select id="encadre">
         <option value="" ${o.encadre == null ? "selected" : ""}>Non renseigné</option>
