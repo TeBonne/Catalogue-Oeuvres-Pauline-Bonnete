@@ -103,11 +103,10 @@ const STATUTS = {
   a_completer: "À compléter", disponible: "Disponible", reserve: "Réservé",
   vendu: "Vendu", pas_a_vendre: "Pas à vendre"
 };
-const TECHNIQUES = ["Acrylique", "Aquarelle", "Pastel", "Peinture à l'huile"]; // liste fermée
-const SUGGESTIONS = {
-  support: ["Toile", "Papier type Canson", "Carton toilé", "Bois"],
-  nature: ["Original", "Commande", "Reproduction"],
-  serie: []
+const LISTES = { // listes fermées, traitées comme le statut
+  technique: ["Acrylique", "Aquarelle", "Pastel", "Peinture à l'huile"],
+  support: ["Toile", "Papier type Canson", "Bois"],
+  nature: ["Original", "Commande", "Reproduction"]
 };
 
 const app = document.getElementById("app");
@@ -305,8 +304,8 @@ function vueListe() {
 
 /* ---------- Fiche (ajout / modification) ---------- */
 async function suggestions() {
-  const listes = { support: new Set(SUGGESTIONS.support), nature: new Set(SUGGESTIONS.nature), serie: new Set() };
-  const { data } = await sb.from("oeuvres").select("support,nature,serie").limit(1000);
+  const listes = { serie: new Set() };
+  const { data } = await sb.from("oeuvres").select("serie").not("serie", "is", null).limit(1000);
   (data || []).forEach((o) => Object.keys(listes).forEach((c) => { if (o[c]) listes[c].add(o[c]); }));
   return listes;
 }
@@ -325,6 +324,15 @@ async function vueFiche(id) {
     <div><label for="${cle}">${lib} <span class="opt">(facultatif)</span></label>
     <input id="${cle}" list="l-${cle}" value="${esc(o[cle])}" autocomplete="off">
     <datalist id="l-${cle}">${[...listes[cle]].sort((a, b) => a.localeCompare(b, "fr")).map((v) => `<option value="${esc(v)}">`).join("")}</datalist></div>`;
+  const champChoix = (cle, lib) => {
+    const valeurs = o[cle] && !LISTES[cle].includes(o[cle]) ? [...LISTES[cle], o[cle]] : LISTES[cle];
+    return `
+    <div><label for="${cle}">${lib} <span class="opt">(facultatif)</span></label>
+    <select id="${cle}">
+      <option value="" ${o[cle] ? "" : "selected"}>Choisir…</option>
+      ${valeurs.map((v) => `<option value="${esc(v)}" ${o[cle] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}
+    </select></div>`;
+  };
   app.innerHTML = `
     <div class="entete"><h1>${id ? "Modifier l'œuvre" : "Nouvelle œuvre"}</h1><button class="btn lien" id="retour">Retour</button></div>
     <form id="f" class="carte" novalidate>
@@ -341,15 +349,8 @@ async function vueFiche(id) {
         <option value="" ${o.statut ? "" : "selected"} disabled>Choisir…</option>
         ${Object.entries(STATUTS).map(([c, l]) => `<option value="${c}" ${o.statut === c ? "selected" : ""}>${l}</option>`).join("")}
       </select>
-      <div class="deux">
-        <div><label for="technique">Technique <span class="opt">(facultatif)</span></label>
-        <select id="technique">
-          <option value="" ${o.technique ? "" : "selected"}>Non renseignée</option>
-          ${(o.technique && !TECHNIQUES.includes(o.technique) ? [...TECHNIQUES, o.technique] : TECHNIQUES).map((t) => `<option value="${esc(t)}" ${o.technique === t ? "selected" : ""}>${esc(t)}</option>`).join("")}
-        </select></div>
-        ${champListe("support", "Support")}
-      </div>
-      <div class="deux">${champListe("nature", "Nature")}${champListe("serie", "Série ou thème")}</div>
+      <div class="deux">${champChoix("technique", "Technique")}${champChoix("support", "Support")}</div>
+      <div class="deux">${champChoix("nature", "Nature")}${champListe("serie", "Série ou thème")}</div>
       <div class="deux">
         <div><label for="hauteur">Hauteur en cm <span class="opt">(facultatif)</span></label><input id="hauteur" inputmode="decimal" value="${esc(String(o.hauteur_cm ?? "").replace(".", ","))}"></div>
         <div><label for="largeur">Largeur en cm <span class="opt">(facultatif)</span></label><input id="largeur" inputmode="decimal" value="${esc(String(o.largeur_cm ?? "").replace(".", ","))}"></div>
