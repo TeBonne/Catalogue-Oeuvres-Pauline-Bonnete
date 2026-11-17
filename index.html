@@ -416,6 +416,26 @@
   #liste-certificats .vente .droite .badge { margin-bottom: 4px; }
   @media (max-width: 600px) { .actions-cert .btn { flex: 1 1 100%; } }
 
+  /* Écran de connexion : l'œuvre encadrée sur le mur, et sa couleur diffusée en fond */
+  .accueil { position: relative; min-height: calc(100dvh - 130px); display: grid; align-content: center; justify-items: center; gap: 26px; }
+  .accueil-fond { position: fixed; inset: -70px; z-index: 0; overflow: hidden; background: center / cover no-repeat; filter: blur(34px) saturate(1.2); opacity: 0; transition: opacity 1.2s ease; }
+  .accueil-fond.pret { opacity: .9; }
+  .accueil-fond::after { content: ""; position: absolute; inset: 0; background: rgba(242,243,240,.28); }
+  .accueil-fond .rogne { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .rogne { position: relative; overflow: hidden; }
+  .rogne img { position: absolute; max-width: none; height: auto; }
+  .accueil-oeuvre {
+    position: relative; z-index: 1; margin: 0; width: 100%; max-width: 190px; padding: 14px; background: #fff; border-radius: 3px;
+    box-shadow: 0 0 0 1px rgba(23,28,38,.08), 0 2px 3px rgba(23,28,38,.12), 0 30px 50px -22px rgba(23,28,38,.6); animation: monte .7s var(--ressort) both;
+  }
+  .accueil-oeuvre .rogne, .accueil-oeuvre img.libre { box-shadow: 0 0 0 1px rgba(23,28,38,.12), 0 1px 3px rgba(23,28,38,.25); }
+  .accueil-oeuvre img.libre { display: block; width: 100%; height: auto; }
+  .accueil-carte { position: relative; z-index: 1; width: 100%; max-width: 420px; box-shadow: 0 0 0 1px rgba(23,28,38,.06), 0 30px 60px -24px rgba(23,28,38,.45); }
+  @media (min-width: 900px) {
+    .accueil.avec-oeuvre { grid-template-columns: minmax(0, 400px) minmax(0, 420px); justify-content: center; align-items: center; gap: 72px; }
+    .accueil-oeuvre { max-width: 400px; padding: 30px; }
+  }
+
   /* Éditeur de photo */
   body.editeur-ouvert { overflow: hidden; }
   .editeur { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; background: #10131a; color: #fff; animation: voile .2s ease both; }
@@ -727,11 +747,41 @@ lateral.addEventListener("click", async (e) => {
   else { etat.statut = nav.slice(6); vueListe(); }
 });
 
+/* ---------- Œuvre affichée sur l'écran de connexion ---------- */
+/* Image choisie par un administrateur (copie publique à chemin fixe) ; à défaut, une œuvre du catalogue rognée à l'affichage. */
+const ACCUEIL_CHOISIE = "accueil/fond.jpg";
+const ACCUEIL_DEFAUT = { // photo d'origine : capture d'écran dont seule la peinture est montrée (zone en pixels de l'image)
+  chemin: "f8f56689-d5f0-40b2-a792-5542aae78b1d/photo-1794934478620.jpg", largeur: 738, x: 128, y: 402, l: 514, h: 753
+};
+function monterAccueil() {
+  const fond = $("#accueil-fond"), cadre = $("#accueil-oeuvre"); if (!fond || !cadre) return;
+  const poser = (adresse, rogne) => {
+    if (!fond.isConnected) return;
+    if (rogne) {
+      const style = `width:${(rogne.largeur / rogne.l) * 100}%;left:${(-rogne.x / rogne.l) * 100}%;top:${(-rogne.y / rogne.h) * 100}%`;
+      const bloc = `<div class="rogne" style="aspect-ratio:${rogne.l}/${rogne.h}"><img alt="" src="${esc(adresse)}" style="${style}"></div>`;
+      fond.innerHTML = bloc; fond.firstChild.style.width = `max(calc(100vw + 140px), calc((100vh + 140px) * ${rogne.l / rogne.h}))`;
+      cadre.innerHTML = bloc;
+    } else {
+      fond.style.backgroundImage = `url("${adresse}")`;
+      cadre.innerHTML = `<img class="libre" alt="" src="${esc(adresse)}">`;
+    }
+    cadre.querySelector("img").alt = "Une œuvre de Pauline Bonneté";
+    cadre.hidden = false; fond.classList.add("pret"); $("#accueil").classList.add("avec-oeuvre");
+  };
+  const essayer = (adresse, alors, sinon) => { const i = new Image(); i.onload = alors; i.onerror = sinon; i.src = adresse; };
+  const choisie = urlPhoto(ACCUEIL_CHOISIE) + "?v=" + Math.floor(Date.now() / 600000), defaut = urlPhoto(ACCUEIL_DEFAUT.chemin);
+  essayer(choisie, () => poser(choisie, null), () => essayer(defaut, () => poser(defaut, ACCUEIL_DEFAUT), () => {}));
+}
+
 /* ---------- Connexion ---------- */
 function vueConnexion(message = "", type = "erreur") {
   masquerLateral();
   app.innerHTML = `
-    <div class="carte" style="max-width:420px;margin:8vh auto 0">
+    <div class="accueil" id="accueil">
+    <div class="accueil-fond" id="accueil-fond" aria-hidden="true"></div>
+    <figure class="accueil-oeuvre" id="accueil-oeuvre" hidden></figure>
+    <div class="carte accueil-carte">
       <h1 style="font-size:1.9rem">Pauline Bonneté</h1>
       <p class="sous" style="margin-top:6px">Ma vie, mes œuvres</p>
       ${message ? `<div class="message ${type}">${message}</div>` : ""}
@@ -748,7 +798,9 @@ function vueConnexion(message = "", type = "erreur") {
         </div>
       </form>
       <p class="sous" style="margin-top:14px">Seules les adresses autorisées accèdent au catalogue.</p>
+    </div>
     </div>`;
+  monterAccueil();
   const lire = () => ({ email: $("#email").value.trim(), password: $("#mdp").value });
   $("#voir").addEventListener("change", (e) => { $("#mdp").type = e.target.checked ? "text" : "password"; });
   const occuper = (b, t) => { app.querySelectorAll("#f button").forEach((x) => { x.disabled = true; }); b.textContent = t; };
@@ -1150,6 +1202,7 @@ async function vueFiche(id, origine) {
         <input class="cache" id="photo" type="file" accept="image/*">
         <button class="btn large" type="button" id="recadrer" style="margin-top:10px" ${id ? "" : "hidden"}>${ICONES.recadrer}Recadrer la photo</button>
         <p class="aide" id="aide-recadrage" hidden>Recadrage appliqué. Enregistrez la fiche pour le conserver.</p>
+        ${id && etat.admin ? `<button class="btn discret" type="button" id="en-accueil" style="margin:6px 0 0 -14px">Afficher sur l'écran de connexion</button>` : ""}
         ${id ? `<p class="aide">${[
           o.poids_photo_octets != null ? `Photo en ligne : ${poids(o.poids_photo_octets)}` : "",
           o.fichier_origine ? `Fichier d'origine : ${esc(o.fichier_origine)}${o.poids_origine_octets != null ? ` (${poids(o.poids_origine_octets)})` : ""}` : ""
@@ -1248,6 +1301,25 @@ async function vueFiche(id, origine) {
     $("#zone").textContent = "Changer de photo"; $("#zone").style.minHeight = "56px"; $("#zone").style.marginTop = "12px";
     $("#zone").removeAttribute("aria-invalid");
     $("#recadrer").hidden = false; $("#aide-recadrage").hidden = true;
+  });
+  if (id && etat.admin) $("#en-accueil").addEventListener("click", async (e) => {
+    const b = e.currentTarget;
+    const accord = await confirmer({
+      titre: "Afficher cette œuvre sur l'écran de connexion ?",
+      corps: "Elle remplacera l'image actuelle. Cet écran est visible sans compte : choisissez une photo recadrée, sans élément étranger à l'œuvre.",
+      action: "Afficher cette œuvre", delai: 0, ton: "neutre", vignette: $("#apercu").src
+    });
+    if (!accord) return;
+    b.disabled = true;
+    try {
+      let source = fichier;
+      if (!source) { const rep = await fetch(urlPhoto(o.photo_path)); if (!rep.ok) throw new Error("La photo enregistrée n'a pas pu être lue."); source = await rep.blob(); }
+      const { grand } = await preparerPhoto(new File([source], "accueil.jpg", { type: source.type || "image/jpeg" }));
+      const { error } = await sb.storage.from(BUCKET).upload(ACCUEIL_CHOISIE, grand, { contentType: "image/jpeg", cacheControl: "60", upsert: true });
+      if (error) throw error;
+      bandeau("Cette œuvre s'affichera sur l'écran de connexion d'ici quelques minutes.");
+    } catch (err) { alerte(msgErreur(err)); }
+    b.disabled = false;
   });
   $("#recadrer").addEventListener("click", async (e) => {
     const b = e.currentTarget; b.disabled = true;
