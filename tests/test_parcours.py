@@ -167,6 +167,8 @@ def test_export_csv(ouvrir):
 def test_tarifs_de_port(ouvrir):
     p = ouvrir()
     js(p, "vueAdmin()"); p.wait_for_timeout(600)
+    assert p.locator("#tarifs-port").is_hidden(), "les tarifs sont dans la sous-rubrique Vente"
+    p.click('[data-onglet="vente"]')
     champ = lambda cle, quoi: f'[data-tarif="{cle}"][data-quoi="{quoi}"]'
     p.fill(champ("petit", "montant"), "douze"); p.click("#tp-enregistrer"); p.wait_for_timeout(150)
     assert "doit être un nombre" in p.locator("#tp-erreur").inner_text()
@@ -174,8 +176,23 @@ def test_tarifs_de_port(ouvrir):
     assert "libellé" in p.locator("#tp-erreur").inner_text()
     p.fill(champ("moyen", "libelle"), "Moyen format"); p.click("#tp-enregistrer"); p.wait_for_timeout(600)
     assert p.locator("#alerte").inner_text() == "Tarifs de frais de port enregistrés."
+    assert p.get_attribute('[data-onglet="vente"]', "aria-selected") == "true" and p.locator("#tarifs-port").is_visible(), "on reste dans la même sous-rubrique"
     assert base(p, "tarifs_port.map(t => [t.libelle, t.montant_eur])")[:2] == [["Petit", 18.5], ["Moyen format", 28.5]]
     assert base(p, "oeuvres.find(o => o.id === 'o3').port_facture_eur") == 28.5, "les ventes passées ne changent pas"
+
+
+def test_sous_rubriques_de_l_administration(ouvrir):
+    p = ouvrir()
+    js(p, "vueAdmin()"); p.wait_for_timeout(600)
+    assert p.locator("#adm-onglets [role=tab]").all_inner_texts() == ["Fiches", "Vente", "Certificats", "Maintenance"]
+    visibles = lambda: p.evaluate("[...document.querySelectorAll('.adm-panneau')].filter(x => !x.hidden).map(x => x.id)")
+    assert visibles() == ["adm-fiches"] and p.locator("#n-ajouter").is_visible()
+    p.click('[data-onglet="certificats"]'); assert visibles() == ["adm-certificats"] and "Signature" in p.locator("#adm-certificats").inner_text()
+    p.keyboard.press("ArrowRight"); assert visibles() == ["adm-maintenance"]
+    assert p.locator("#corbeille").is_visible() and p.locator("#revoir-tuto").is_visible()
+    js(p, "vueFiche('o1')"); p.wait_for_timeout(500); js(p, "vueAdmin()"); p.wait_for_timeout(600)
+    assert visibles() == ["adm-maintenance"], "la sous-rubrique est conservée au retour"
+    assert not deborde(p)
 
 
 def test_listes_de_choix(ouvrir):

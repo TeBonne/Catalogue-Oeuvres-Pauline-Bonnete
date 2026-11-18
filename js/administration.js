@@ -27,14 +27,25 @@ async function vueAdmin(message = "", type = "info") {
   app.innerHTML = `
     <div id="adm" class="etroit">
       ${entete("Administration")}
-      <p class="sous">Champs et listes de choix des fiches. Les modifications s'appliquent à toutes les œuvres.</p>
       <div id="alerte">${message ? `<div class="message ${type}">${message}</div>` : ""}</div>
-      <button class="btn discret" id="revoir-tuto" style="margin:0 0 12px -14px">${ICONES.aide}Revoir le tutoriel de prise en main</button>
+      <div class="onglets" id="adm-onglets" role="tablist" aria-label="Rubriques de l'administration">
+        ${[["fiches", "Fiches"], ["vente", "Vente"], ["certificats", "Certificats"], ["maintenance", "Maintenance"]].map(([c, l]) => `<button role="tab" id="onglet-${c}" data-onglet="${c}" aria-controls="adm-${c}" aria-selected="${etat.adminOnglet === c}" tabindex="${etat.adminOnglet === c ? 0 : -1}">${l}</button>`).join("")}
+      </div>
+      <div class="adm-panneau" role="tabpanel" id="adm-maintenance" aria-labelledby="onglet-maintenance" ${etat.adminOnglet === "maintenance" ? "" : "hidden"}>
+      <p class="sous adm-intro">Corbeille et prise en main de l'application.</p>
       <section class="carte bloc">
         <h2>Corbeille</h2>
         <p class="sous">${enCorbeille ? `${enCorbeille} œuvre${enCorbeille > 1 ? "s" : ""} supprimée${enCorbeille > 1 ? "s" : ""}, à restaurer ou à effacer définitivement.` : "Aucune œuvre dans la corbeille."}</p>
         <button class="btn large" id="corbeille">Ouvrir la corbeille</button>
       </section>
+      <section class="carte bloc">
+        <h2>Prise en main</h2>
+        <p class="sous">Le tutoriel présente les huit fonctions principales, étape par étape.</p>
+        <button class="btn large" id="revoir-tuto">${ICONES.aide}Revoir le tutoriel</button>
+      </section>
+      </div>
+      <div class="adm-panneau" role="tabpanel" id="adm-vente" aria-labelledby="onglet-vente" ${etat.adminOnglet === "vente" ? "" : "hidden"}>
+      <p class="sous adm-intro">Ce qui s'applique aux œuvres vendues.</p>
       <section class="carte bloc" id="tarifs-port">
         <h2>Frais de port</h2>
         <p class="sous">Quatre tarifs, facturés à l'acheteur en plus du prix de l'œuvre. Le tarif se choisit dans la fiche de chaque œuvre. Modifier un montant ici ne change pas les ventes déjà enregistrées.</p>
@@ -48,8 +59,14 @@ async function vueAdmin(message = "", type = "info") {
         <div id="tp-erreur" role="alert"></div>
         <button class="btn plein large" id="tp-enregistrer" style="margin-top:14px">Enregistrer les tarifs</button>` : `<div class="message erreur">Les tarifs n'ont pas pu être chargés.</div>`}
       </section>
+      </div>
+      <div class="adm-panneau" role="tabpanel" id="adm-certificats" aria-labelledby="onglet-certificats" ${etat.adminOnglet === "certificats" ? "" : "hidden"}>
+      <p class="sous adm-intro">Réglages repris sur chaque certificat d'authenticité émis.</p>
       <div id="reglages-certificats"></div>
-      <h2 style="margin-top:22px">Champs des fiches</h2>
+      </div>
+      <div class="adm-panneau" role="tabpanel" id="adm-fiches" aria-labelledby="onglet-fiches" ${etat.adminOnglet === "fiches" ? "" : "hidden"}>
+      <p class="sous adm-intro">Champs et listes de choix des fiches. Les modifications s'appliquent à toutes les œuvres.</p>
+      <h2>Champs des fiches</h2>
       ${etat.champs.map(carte).join("")}
       <section class="carte bloc">
         <h2>Ajouter un champ</h2>
@@ -60,10 +77,24 @@ async function vueAdmin(message = "", type = "info") {
         <p class="sous">Le type ne peut plus être changé ensuite. Pour une liste, les choix s'ajoutent après la création.</p>
         <button class="btn plein large" id="n-ajouter">Ajouter le champ</button>
       </section>
+      </div>
     </div>`;
   $("#retour").addEventListener("click", vueListe);
   $("#corbeille").addEventListener("click", () => vueCorbeille());
   $("#revoir-tuto").addEventListener("click", () => lancerTutoriel());
+  // Sous-rubriques : une seule est affichée ; la rubrique choisie est conservée d'un affichage à l'autre
+  const choisirOnglet = (cle, focus) => {
+    etat.adminOnglet = cle;
+    $("#adm-onglets").querySelectorAll("[role=tab]").forEach((b) => { const actif = b.dataset.onglet === cle; b.setAttribute("aria-selected", String(actif)); b.tabIndex = actif ? 0 : -1; if (actif && focus) b.focus(); });
+    document.querySelectorAll(".adm-panneau").forEach((x) => { x.hidden = x.id !== "adm-" + cle; });
+    $("#alerte").innerHTML = "";
+  };
+  $("#adm-onglets").addEventListener("click", (e) => { const b = e.target.closest("[data-onglet]"); if (b) choisirOnglet(b.dataset.onglet); });
+  $("#adm-onglets").addEventListener("keydown", (e) => {
+    const tous = [...$("#adm-onglets").querySelectorAll("[role=tab]")], i = tous.findIndex((b) => b.dataset.onglet === etat.adminOnglet);
+    const cible = e.key === "ArrowRight" ? tous[(i + 1) % tous.length] : e.key === "ArrowLeft" ? tous[(i - 1 + tous.length) % tous.length] : e.key === "Home" ? tous[0] : e.key === "End" ? tous[tous.length - 1] : null;
+    if (cible) { e.preventDefault(); choisirOnglet(cible.dataset.onglet, true); }
+  });
   monterReglagesCertificats();
   const erreur = (m) => { $("#alerte").innerHTML = `<div class="message erreur">${m}</div>`; window.scrollTo(0, 0); };
   const verifier = (res) => { if (res.error) throw res.error; if (res.data && !res.data.length) throw new Error("Modification refusée : droits insuffisants."); };
