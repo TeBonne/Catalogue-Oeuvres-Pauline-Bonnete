@@ -10,6 +10,7 @@ const texte = (v) => { const t = String(v ?? "").trim(); return t === "" ? null 
 const prix = (v) => v == null ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: Number.isInteger(Number(v)) ? 0 : 2, maximumFractionDigits: 2 }).format(v);
 const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ICONES = {
+  menu: svg('<path d="M4 7h16M4 12h16M4 17h16"/>'),
   retour: svg('<path d="M15 18l-6-6 6-6"/>'),
   telecharger: svg('<path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/>'),
   filtres: svg('<path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/>'),

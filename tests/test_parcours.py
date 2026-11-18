@@ -48,6 +48,8 @@ def test_tri_du_catalogue(ouvrir):
     p.select_option("#tri", "titre-asc"); p.wait_for_timeout(350)
     assert lire("titre")[0] == "83159" and lire("titre")[-1] == "Titre 1"
     assert p.evaluate("localStorage.getItem('catalogue-tri')") == "titre-asc"
+    pastille = p.evaluate("(() => { const c = getComputedStyle(document.querySelector('#grille .pastille')); return [c.backgroundColor, c.width, c.height]; })()")
+    assert pastille == ["rgb(212, 53, 28)", "10px", "10px"], "repère des œuvres vendues : pastille ronde vermillon"
     assert not deborde(p)
 
 
@@ -216,3 +218,20 @@ def test_toutes_les_vues(ouvrir):
         js(p, vue); p.wait_for_timeout(500)
         assert p.locator("#app").inner_text().strip(), vue
         assert not deborde(p), f"débordement horizontal : {vue}"
+
+
+# ---------- Navigation ----------
+def test_menu_sur_telephone(ouvrir, ecran):
+    p = ouvrir()
+    if ecran == "ordinateur":
+        assert p.locator("#menu").is_hidden() and p.locator('#lateral [data-nav="certificats"]').is_visible()
+        return
+    lien = p.locator('#lateral [data-nav="certificats"]')
+    assert not lien.is_visible(), "menu fermé au départ"
+    p.click("#menu"); p.wait_for_timeout(400)
+    assert lien.is_visible() and p.get_attribute("#menu", "aria-expanded") == "true"
+    p.keyboard.press("Escape"); p.wait_for_timeout(400); assert not lien.is_visible()
+    p.click("#menu"); p.wait_for_timeout(400); lien.click(); p.wait_for_timeout(600)
+    assert p.locator("h1").inner_text() == "Certificats d'authenticité"
+    assert not p.evaluate("document.body.classList.contains('menu-ouvert')")
+    assert not deborde(p)

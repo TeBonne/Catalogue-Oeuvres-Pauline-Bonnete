@@ -3,7 +3,7 @@
    Tutoriel de prise en main : huit étapes qui pointent les vrais éléments de l'écran.
    Lancé à la première connexion, passable à tout moment, rejouable ensuite.
    ============================================================================ */
-const visibleTuto = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? el : null; };
+const visibleTuto = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden" ? el : null; };
 const premierVisible = (selecteur) => [...document.querySelectorAll(selecteur)].find(visibleTuto) || null;
 
 const ETAPES_TUTO = [
@@ -24,13 +24,13 @@ const ETAPES_TUTO = [
     cible: () => visibleTuto(document.querySelector("#sel-entrer")) },
   { titre: "Suivre les ventes", admin: true,
     texte: "Le suivi des ventes totalise les œuvres vendues et les présente par mois ou par année, avec le prix réellement encaissé.",
-    cible: () => premierVisible('#lateral [data-nav="ventes"], #ventes') },
+    cible: () => premierVisible('#lateral [data-nav="ventes"], #menu') },
   { titre: "Délivrer un certificat", admin: true,
     texte: "Depuis la fiche d'une œuvre, générez son certificat d'authenticité en PDF, signé ou à signer à la main. L'historique des certificats émis est conservé.",
-    cible: () => premierVisible('#lateral [data-nav="certificats"]') },
+    cible: () => premierVisible('#lateral [data-nav="certificats"], #menu') },
   { titre: "Régler l'application", admin: true,
     texte: "Administration regroupe les listes de choix, les champs supplémentaires et la signature. La corbeille conserve les œuvres supprimées, pour les restaurer en cas d'erreur.",
-    cible: () => premierVisible('#lateral [data-nav="admin"], #admin') }
+    cible: () => premierVisible('#lateral [data-nav="admin"], #menu') }
 ];
 
 let tutorielEnCours = false;

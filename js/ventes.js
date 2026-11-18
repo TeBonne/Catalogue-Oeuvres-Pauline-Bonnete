@@ -225,7 +225,7 @@ async function vueVentes() {
         </div>
         <div class="outils-ventes">
           <input id="v-q" type="search" enterkeyhint="search" placeholder="Rechercher un titre…" aria-label="Rechercher une vente par titre" value="${esc(cfg.f.q)}">
-          <button class="btn" id="v-filtres" aria-expanded="${cfg.panneau}" aria-controls="v-panneau">${ICONES.filtres}Filtres<span class="pastille" id="v-nb" hidden></span></button>
+          <button class="btn" id="v-filtres" aria-expanded="${cfg.panneau}" aria-controls="v-panneau">${ICONES.filtres}Filtres<span class="compteur-filtres" id="v-nb" hidden></span></button>
           <select id="v-tri" class="tri" aria-label="Trier la liste des ventes">${Object.entries(TRIS_VENTES).map(([c, l]) => `<option value="${c}" ${c === cfg.tri ? "selected" : ""}>${l}</option>`).join("")}</select>
         </div>
         <form class="panneau-filtres" id="v-panneau" ${cfg.panneau ? "" : "hidden"} novalidate>

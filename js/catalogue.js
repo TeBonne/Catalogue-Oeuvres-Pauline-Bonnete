@@ -94,8 +94,7 @@ function vueListe() {
     <div class="entete">
       <h1>Catalogue des œuvres</h1>
       <div class="actions-entete">
-        ${etat.admin ? `<button class="btn icone-seule" id="ventes" aria-label="Suivi des ventes" title="Suivi des ventes">${ICONES.graphique}</button>` : ""}
-        ${etat.admin ? `<button class="btn icone-seule" id="admin" aria-label="Administration" title="Administration">${ICONES.reglages}</button>` : ""}
+        <button class="btn icone-seule" id="menu" aria-label="Ouvrir le menu" title="Menu" aria-expanded="false" aria-controls="lateral">${ICONES.menu}</button>
         <button class="btn icone-seule" id="sortir" aria-label="Déconnexion" title="Déconnexion">${ICONES.sortir}</button>
       </div>
       <div class="actions-bureau">
@@ -164,7 +163,7 @@ function vueListe() {
   });
   $("#plus").addEventListener("click", async () => { try { await chargerPage(false); dessinerGrille(); } catch (e) { $("#resume").textContent = "Erreur de chargement : " + (e.message || e); } });
   app.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => (b.dataset.go === "import" ? vueImport() : vueFiche(null))));
-  if (etat.admin) { $("#admin").addEventListener("click", () => vueAdmin()); $("#ventes").addEventListener("click", () => vueVentes()); }
+  $("#menu").addEventListener("click", ouvrirMenu);
   $("#sortir").addEventListener("click", () => sb.auth.signOut());
   if (!retour) window.scrollTo(0, 0);
   rafraichirListe(true, retour ? retour.pages : 1).then(() => { if (retour && $("#grille")) window.scrollTo(0, retour.y); });

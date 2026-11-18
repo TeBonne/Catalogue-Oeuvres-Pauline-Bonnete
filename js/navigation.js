@@ -1,8 +1,27 @@
 "use strict";
-/* Navigation : barre latérale des écrans larges. */
+/* Navigation : une seule liste de rubriques, affichée en barre latérale sur écran large
+   et en menu coulissant sur téléphone (bouton « Menu » de l'en-tête du catalogue). */
 
-/* ---------- Barre latérale (écrans larges) ---------- */
-function masquerLateral() { lateral.hidden = true; document.body.classList.remove("avec-lateral"); }
+/* ---------- Menu coulissant (téléphone) ---------- */
+const voileMenu = document.createElement("div");
+voileMenu.id = "voile-menu"; voileMenu.setAttribute("aria-hidden", "true");
+document.body.append(voileMenu);
+function ouvrirMenu() {
+  document.body.classList.add("menu-ouvert");
+  const b = document.querySelector("#menu"); if (b) b.setAttribute("aria-expanded", "true");
+  setTimeout(() => { const l = lateral.querySelector(".lat-fermer"); if (l) l.focus(); }, 60);
+}
+function fermerMenu(rendreFocus = false) {
+  if (!document.body.classList.contains("menu-ouvert")) return;
+  document.body.classList.remove("menu-ouvert");
+  const b = document.querySelector("#menu"); if (b) { b.setAttribute("aria-expanded", "false"); if (rendreFocus) b.focus(); }
+}
+voileMenu.addEventListener("click", () => fermerMenu(true));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.body.classList.contains("menu-ouvert")) { e.stopPropagation(); fermerMenu(true); } });
+window.addEventListener("resize", () => { if (innerWidth >= 900) fermerMenu(); });
+
+/* ---------- Barre latérale ---------- */
+function masquerLateral() { fermerMenu(); lateral.hidden = true; document.body.classList.remove("avec-lateral"); }
 function majLateral(section) {
   if (section != null) { if (section !== etat.section || !app.classList.contains("arrive")) arriver(); etat.section = section; etat.gardien = null; etat.modifie = false; }
   document.body.classList.remove("barre-visible");
@@ -10,6 +29,7 @@ function majLateral(section) {
   const lien = (cle, libelle, n, deco = "") => `<button class="lat-lien" data-nav="${cle}" ${etat.section === cle ? 'aria-current="page"' : ""}><span>${deco}<span>${esc(libelle)}</span></span>${n == null ? "" : `<span class="n">${n}</span>`}</button>`;
   const point = (c) => `<span class="point" style="background:${POINTS[c]}" aria-hidden="true"></span>`;
   lateral.innerHTML = `
+    <button class="btn icone-seule lat-fermer" data-nav="fermer" aria-label="Fermer le menu" title="Fermer le menu">${ICONES.fermer}</button>
     <div class="lat-marque">Pauline Bonneté</div>
     <div class="lat-sous">Catalogue des œuvres</div>
     ${etat.admin ? lien("admin", "Administration", null, ICONES.reglages) : ""}
@@ -30,8 +50,10 @@ function majLateral(section) {
 lateral.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-nav]"); if (!b || etat.occupe) return;
   const nav = b.dataset.nav;
+  if (nav === "fermer") return fermerMenu(true);
   if (etat.gardien && !(await etat.gardien())) return;
   etat.retour = null;
+  fermerMenu();
   if (nav === "admin") vueAdmin();
   else if (nav === "corbeille") vueCorbeille();
   else if (nav === "ventes") vueVentes();
