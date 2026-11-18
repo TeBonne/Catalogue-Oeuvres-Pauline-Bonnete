@@ -224,7 +224,7 @@ body.editeur-ouvert { overflow: hidden; }
 .onglets [role=tab]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .adm-panneau { animation: voile .18s ease both; }
 .adm-intro { margin: 0 0 14px; }
-@media (max-width: 420px) { .onglets [role=tab] { padding: 0 10px; font-size: .92rem; } }
+@media (max-width: 480px) { .onglets { gap: 0; justify-content: space-between; } .onglets [role=tab] { padding: 0 6px; font-size: .86rem; letter-spacing: -.01em; } }
 
 /* Photos complémentaires (fiche) */
 .galerie-titre { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 18px 0 8px; font: 600 1rem var(--titre); }
