@@ -29,7 +29,7 @@ async function vueAdmin(message = "", type = "info") {
       ${entete("Administration")}
       <div id="alerte">${message ? `<div class="message ${type}">${message}</div>` : ""}</div>
       <div class="onglets" id="adm-onglets" role="tablist" aria-label="Rubriques de l'administration">
-        ${[["fiches", "Fiches"], ["vente", "Vente"], ["certificats", "Certificats"], ["maintenance", "Maintenance"]].map(([c, l]) => `<button role="tab" id="onglet-${c}" data-onglet="${c}" aria-controls="adm-${c}" aria-selected="${etat.adminOnglet === c}" tabindex="${etat.adminOnglet === c ? 0 : -1}">${l}</button>`).join("")}
+        ${[["fiches", "Œuvres"], ["vente", "Frais de port"], ["certificats", "Certificats"], ["maintenance", "Maintenance"]].map(([c, l]) => `<button role="tab" id="onglet-${c}" data-onglet="${c}" aria-controls="adm-${c}" aria-selected="${etat.adminOnglet === c}" tabindex="${etat.adminOnglet === c ? 0 : -1}">${l}</button>`).join("")}
       </div>
       <div class="adm-panneau" role="tabpanel" id="adm-maintenance" aria-labelledby="onglet-maintenance" ${etat.adminOnglet === "maintenance" ? "" : "hidden"}>
       <p class="sous adm-intro">Corbeille et prise en main de l'application.</p>
@@ -45,9 +45,8 @@ async function vueAdmin(message = "", type = "info") {
       </section>
       </div>
       <div class="adm-panneau" role="tabpanel" id="adm-vente" aria-labelledby="onglet-vente" ${etat.adminOnglet === "vente" ? "" : "hidden"}>
-      <p class="sous adm-intro">Ce qui s'applique aux œuvres vendues.</p>
       <section class="carte bloc" id="tarifs-port">
-        <h2>Frais de port</h2>
+        <h2>Tarifs</h2>
         <p class="sous">Quatre tarifs, facturés à l'acheteur en plus du prix de l'œuvre. Le tarif se choisit dans la fiche de chaque œuvre. Modifier un montant ici ne change pas les ventes déjà enregistrées.</p>
         ${etat.tarifs.length ? `
         <div class="tarifs">

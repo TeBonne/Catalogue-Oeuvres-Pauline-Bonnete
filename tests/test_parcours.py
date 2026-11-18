@@ -167,7 +167,7 @@ def test_export_csv(ouvrir):
 def test_tarifs_de_port(ouvrir):
     p = ouvrir()
     js(p, "vueAdmin()"); p.wait_for_timeout(600)
-    assert p.locator("#tarifs-port").is_hidden(), "les tarifs sont dans la sous-rubrique Vente"
+    assert p.locator("#tarifs-port").is_hidden(), "les tarifs sont dans la sous-rubrique Frais de port"
     p.click('[data-onglet="vente"]')
     champ = lambda cle, quoi: f'[data-tarif="{cle}"][data-quoi="{quoi}"]'
     p.fill(champ("petit", "montant"), "douze"); p.click("#tp-enregistrer"); p.wait_for_timeout(150)
@@ -184,7 +184,7 @@ def test_tarifs_de_port(ouvrir):
 def test_sous_rubriques_de_l_administration(ouvrir):
     p = ouvrir()
     js(p, "vueAdmin()"); p.wait_for_timeout(600)
-    assert p.locator("#adm-onglets [role=tab]").all_inner_texts() == ["Fiches", "Vente", "Certificats", "Maintenance"]
+    assert p.locator("#adm-onglets [role=tab]").all_inner_texts() == ["Œuvres", "Frais de port", "Certificats", "Maintenance"]
     visibles = lambda: p.evaluate("[...document.querySelectorAll('.adm-panneau')].filter(x => !x.hidden).map(x => x.id)")
     assert visibles() == ["adm-fiches"] and p.locator("#n-ajouter").is_visible()
     p.click('[data-onglet="certificats"]'); assert visibles() == ["adm-certificats"] and "Signature" in p.locator("#adm-certificats").inner_text()
