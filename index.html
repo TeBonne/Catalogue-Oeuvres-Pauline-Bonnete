@@ -19,7 +19,7 @@
   :root {
     /* Mur de galerie : blanc de cimaise, encre, gris de Payne, outremer pour agir, vermillon pour « vendu » */
     --fond: #f2f3f0; --carte: #ffffff; --encre: #171c26; --doux: #5b6472;
-    --trait: #e1e3de; --accent: #3247d6; --accent-fonce: #2434a8; --accent-pale: #e9ecfc; --alerte: #c2301c; --vermillon: #d4351c;
+    --trait: #e1e3de; --accent: #3247d6; --accent-fonce: #2434a8; --accent-pale: #e9ecfc; --alerte: #c2301c; --vermillon: #d4351c; --port: #d98a00;
     --rayon: 16px; --ressort: cubic-bezier(.2, .8, .2, 1);
     --titre: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
     --texte: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -242,8 +242,22 @@
     position: relative; flex: 1 1 0; min-width: 0; height: 100%; padding: 0 1px; border: 0; background: none; cursor: pointer;
     display: flex; align-items: flex-end; justify-content: center;
   }
-  .graphe .barre { width: 100%; max-width: 24px; background: var(--accent); border-radius: 4px 4px 0 0; }
-  .graphe .col:hover .barre, .graphe .col:focus-visible .barre { background: var(--accent-fonce); }
+  .graphe .barre { width: 100%; max-width: 24px; display: flex; flex-direction: column; gap: 2px; }
+  .graphe .seg { display: block; flex: 1 1 0; min-height: 2px; }
+  .graphe .seg:first-child { border-radius: 4px 4px 0 0; }
+  .graphe .seg.tab { background: var(--accent); }
+  .graphe .seg.port { background: var(--port); }
+  .graphe .col:hover .seg.tab, .graphe .col:focus-visible .seg.tab { background: var(--accent-fonce); }
+  .graphe .col:hover .seg.port, .graphe .col:focus-visible .seg.port { background: #b87400; }
+  .legende { display: flex; gap: 16px; margin: 0 0 16px; font-size: .82rem; color: var(--doux); }
+  .legende span { display: inline-flex; align-items: center; gap: 6px; }
+  .legende i, .port-ligne i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .legende i.tab { background: var(--accent); } .legende i.port, .port-ligne i { background: var(--port); }
+  .port-ligne { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
+  .infobulle .detail { display: block; opacity: .8; }
+  .tarifs { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px 10px; align-items: center; margin-top: 12px; }
+  .tarifs .lib { font-size: .85rem; font-weight: 600; }
+  .tarifs input { margin: 0; }
   .graphe.filtre .col[aria-pressed="false"] .barre { opacity: .4; }
   .graphe .col:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
   .graphe .abscisses { grid-column: 2; display: flex; padding-top: 6px; color: var(--doux); font-size: .72rem; }
@@ -560,6 +574,15 @@
     *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
     .btn.plein:hover, .oeuvre:hover .cadre, .ligne:hover { transform: none; }
   }
+  /* Quatre tuiles (suivi des ventes) */
+  @media (min-width: 601px) { .tuiles.quatre { grid-template-columns: repeat(4, 1fr); } .tuiles.quatre .tuile .v { font-size: 1.5rem; } }
+  @media (max-width: 600px) {
+    .tuiles.quatre .tuile:first-child { grid-column: auto; }
+    .tuiles.quatre .tuile:nth-child(-n+2) { border-bottom: 1px solid var(--trait); }
+    .tuiles.quatre .tuile:nth-child(2) { border-left: 1px solid var(--trait); }
+    .tuiles.quatre .tuile:nth-child(3) { border-left: 0; }
+    .tuiles.quatre .tuile .v { font-size: 1.3rem; }
+  }
 </style>
 </head>
 <body>
@@ -607,7 +630,7 @@ try { vueMemorisee = localStorage.getItem("catalogue-vue") === "liste" ? "liste"
 const LIBELLES_DEFAUT = { technique: "Technique", support: "Support", nature: "Nature" };
 const TYPES = { texte: "Texte", nombre: "Nombre", liste: "Liste de choix", case: "Case à cocher" };
 const lateral = document.getElementById("lateral");
-const etat = { selection: null, dernier: null, ventes: { grain: "mois", annee: null, periode: null }, jeton: 0, retour: null, gardien: null, modifie: false, adminOuvert: null, section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, tri: triMemorise, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
+const etat = { selection: null, dernier: null, ventes: { grain: "mois", annee: null, periode: null }, jeton: 0, retour: null, gardien: null, modifie: false, adminOuvert: null, section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, tri: triMemorise, tarifs: [], admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
 
 /* ---------- Utilitaires ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -633,7 +656,13 @@ ICONES.fermer = svg('<path d="M6 6l12 12M18 6L6 18"/>');
 ICONES.graphique = svg('<path d="M5 20V11M12 20V4M19 20v-6"/>');
 const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 const MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
-const euros = (v) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(v);
+const euros = (v) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 }).format(v); // centimes seulement s'il y en a
+const enSaisie = (v) => (v == null ? "" : (Number.isInteger(Number(v)) ? String(Number(v)) : Number(v).toFixed(2)).replace(".", ",")); // nombre → texte d'un champ de saisie
+async function chargerTarifs() {
+  const { data, error } = await sb.from("tarifs_port").select("cle,libelle,montant_eur,ordre").order("ordre");
+  if (error) throw error;
+  etat.tarifs = data.map((t) => ({ ...t, montant_eur: Number(t.montant_eur) || 0 }));
+}
 const dateFr = (iso) => { const [a, m, j] = String(iso).split("-"); return `${j}/${m}/${a}`; };
 const aujourdhui = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 /* Accepte AAAA-MM-JJ (sélecteur de date) ou JJ/MM/AAAA (saisie au clavier). Renvoie AAAA-MM-JJ, "" si vide, null si invalide. */
@@ -957,6 +986,7 @@ async function demarrer(session) {
   if (!data.length) return vueNonAutorise(session.user.email);
   etat.admin = !!data[0].admin; etat.email = data[0].email; etat.tutorielVu = data[0].tutoriel_vu !== false;
   try { await chargerChamps(); } catch (_) { etat.champs = []; }
+  try { await chargerTarifs(); } catch (_) { etat.tarifs = []; }
   vueListe();
   if (!etat.tutorielVu) setTimeout(() => { if (etat.utilisateur && !etat.tutorielVu) lancerTutoriel(); }, 1200); // première connexion
 }
@@ -1209,13 +1239,13 @@ function demanderChamp(n, impose) {
         ? `<select id="lot-valeur">${c.options().map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("")}</select>`
         : `<input id="lot-valeur" inputmode="${c.saisie}" autocomplete="off" placeholder="Laisser vide pour effacer la valeur">`;
       q("#lot-aide").textContent = c.cle === "statut"
-        ? "Une œuvre vendue qui passe à un autre statut perd son prix de vente et sa date de vente."
+        ? "Une œuvre vendue qui passe à un autre statut perd son prix de vente, sa date de vente et ses frais de port facturés."
         : `La valeur actuelle de ce champ sera remplacée sur ${n > 1 ? "toutes les œuvres sélectionnées" : "l'œuvre sélectionnée"}.`;
       q("#lot-erreur").innerHTML = "";
     };
     const lire = () => {
       const c = champ(), v = q("#lot-valeur").value;
-      if (c.cle === "statut") return v === "vendu" ? { statut: v } : { statut: v, prix_vendu_eur: null, date_vente: null };
+      if (c.cle === "statut") return v === "vendu" ? { statut: v } : { statut: v, prix_vendu_eur: null, date_vente: null, port_facture_eur: null };
       if (c.cle === "prix_masque") return { prix_masque: v === "oui" };
       if (c.cle === "encadre") return { encadre: v === "" ? null : v === "oui" };
       if (c.cle === "annee") {
@@ -1354,6 +1384,9 @@ async function vueFiche(id, origine) {
               <input id="date_vente" type="date" max="${aujourdhui()}" value="${esc(o.date_vente)}"></div>
           </div>
           <p class="aide">Le prix réellement encaissé peut différer du prix affiché. Ces deux informations alimentent le suivi des ventes.</p>
+          <label for="port_facture">Frais de port facturés (€)</label>
+          <input id="port_facture" class="champ-court" inputmode="decimal" autocomplete="off" value="${esc(enSaisie(o.port_facture_eur))}" aria-describedby="port-aide">
+          <p class="aide" id="port-aide">Facturés à l'acheteur en plus du prix. Le montant reprend le tarif choisi dans « Frais de port », reste modifiable et ne changera plus si les tarifs évoluent. Laissez vide pour une remise en main propre.</p>
         </div>
 
         <h2 class="section">Caractéristiques</h2>
@@ -1381,6 +1414,12 @@ async function vueFiche(id, origine) {
         <label for="prix">Prix (€)</label>
         <input id="prix" class="champ-court" inputmode="decimal" autocomplete="off" value="${esc(String(o.prix_eur ?? "").replace(".", ","))}">
         <label class="coche" for="prix_masque"><input id="prix_masque" type="checkbox" ${o.prix_masque ? "checked" : ""}> Ne pas afficher le prix sur le site web</label>
+        <label for="port_type">Frais de port</label>
+        <select id="port_type" class="champ-court" aria-describedby="port-type-aide">
+          <option value="">Non défini</option>
+          ${etat.tarifs.map((t) => `<option value="${t.cle}" ${o.port_type === t.cle ? "selected" : ""}>${esc(t.libelle)}${t.montant_eur ? ` (${esc(euros(t.montant_eur))})` : ""}</option>`).join("")}
+        </select>
+        <p class="aide" id="port-type-aide">Taille du colis à prévoir. ${etat.admin ? "Les tarifs se règlent dans Administration." : "Les tarifs sont réglés par l'administrateur."}</p>
 
         ${perso_html ? `<h2 class="section">Informations complémentaires</h2>${perso_html}` : ""}
 
@@ -1419,7 +1458,17 @@ async function vueFiche(id, origine) {
     const vendu = e.target.value === "vendu";
     $("#bloc-vente").hidden = !vendu;
     if (vendu && !texte($("#prix_vendu").value)) $("#prix_vendu").value = $("#prix").value; // proposé par défaut : le prix affiché
+    if (vendu) proposerPort();
   });
+  // Frais de port : le montant facturé suit le tarif choisi tant qu'il n'a pas été saisi à la main
+  let portSaisi = o.port_facture_eur != null;
+  function proposerPort() {
+    if (portSaisi) return;
+    const t = etat.tarifs.find((x) => x.cle === $("#port_type").value);
+    $("#port_facture").value = t && t.montant_eur ? enSaisie(t.montant_eur) : "";
+  }
+  $("#port_facture").addEventListener("input", (e) => { portSaisi = texte(e.target.value) !== null; });
+  $("#port_type").addEventListener("change", proposerPort);
   $("#retour").addEventListener("click", quitter);
   $("#annuler").addEventListener("click", quitter);
   $("#photo").addEventListener("change", (e) => {
@@ -1488,6 +1537,8 @@ async function vueFiche(id, origine) {
     if (vendu && texte($("#prix_vendu").value) && (pv === null || pv < 0)) return alerte("Le prix de vente doit être un nombre, par exemple 450.", "prix_vendu");
     if (vendu && ($("#date_vente").validity.badInput || dv === null)) return alerte("La date de la vente n'est pas valide. Format attendu : JJ/MM/AAAA.", "date_vente");
     if (vendu && dv && dv > aujourdhui()) return alerte("La date de la vente ne peut pas être dans le futur.", "date_vente");
+    const pf = vendu ? nombre($("#port_facture").value) : null;
+    if (vendu && texte($("#port_facture").value) && (pf === null || pf < 0)) return alerte("Les frais de port doivent être un nombre, par exemple 25.", "port_facture");
     const cp = { ...(o.champs_perso || {}) };
     for (const c of champsPerso()) {
       const el = document.getElementById("cp-" + c.id); if (!el) continue;
@@ -1498,6 +1549,7 @@ async function vueFiche(id, origine) {
     const valeurs = {
       titre: texte($("#titre").value) || "Sans titre", statut: $("#statut").value,
       prix_vendu_eur: pv, date_vente: dv || null,
+      port_type: $("#port_type").value || null, port_facture_eur: pf,
       technique: texte($("#technique").value), support: texte($("#support").value),
       nature: texte($("#nature").value), serie: texte($("#serie").value),
       hauteur_cm: h, largeur_cm: l, annee: a, prix_eur: p, prix_masque: $("#prix_masque").checked,
@@ -1553,7 +1605,7 @@ async function vueFiche(id, origine) {
 async function chargerVentes() {
   const ventes = [];
   for (let debut = 0; ; debut += 1000) {
-    const { data, error } = await sb.from("oeuvres").select("id,titre,nature,vignette_path,prix_eur,prix_vendu_eur,date_vente")
+    const { data, error } = await sb.from("oeuvres").select("id,titre,nature,vignette_path,prix_eur,prix_vendu_eur,date_vente,port_facture_eur")
       .eq("statut", "vendu").is("supprime_le", null).order("id").range(debut, debut + 999);
     if (error) throw error;
     ventes.push(...data);
@@ -1585,6 +1637,9 @@ async function vueVentes() {
   const cfg = etat.ventes;
   if (!annees.includes(cfg.annee)) cfg.annee = annees[annees.length - 1] ?? new Date().getFullYear();
   const somme = (l) => l.reduce((t, v) => t + montant(v), 0);
+  const port = (v) => Number(v.port_facture_eur) || 0;
+  const sommePort = (l) => Math.round(l.reduce((t, v) => t + port(v), 0) * 100) / 100;
+  const avecPort = sommePort(completes) > 0; // deux séries dans le graphique seulement s'il y a du port à montrer
   const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? "s" : ""}`;
   const plafond = (v) => { if (v <= 0) return 100; const p = 10 ** Math.floor(Math.log10(v)); return [1, 2, 2.5, 5, 10].map((k) => k * p).find((x) => x >= v); };
 
@@ -1594,9 +1649,9 @@ async function vueVentes() {
       ? MOIS.map((m, i) => ({ cle: `${cfg.annee}-${String(i + 1).padStart(2, "0")}`, long: m, court: m[0].toUpperCase(), nom: `${MOIS_LONGS[i]} ${cfg.annee}` }))
       : (annees.length ? Array.from({ length: annees[annees.length - 1] - annees[0] + 1 }, (_, i) => annees[0] + i) : [cfg.annee])
           .map((a) => ({ cle: String(a), long: String(a), court: String(a).slice(2), nom: `Année ${a}` }));
-    series.forEach((s) => { const l = completes.filter((v) => v.date_vente.startsWith(s.cle)); s.total = somme(l); s.n = l.length; });
+    series.forEach((s) => { const l = completes.filter((v) => v.date_vente.startsWith(s.cle)); s.total = somme(l); s.port = sommePort(l); s.n = l.length; });
     if (cfg.periode && !series.some((s) => s.cle === cfg.periode)) cfg.periode = null;
-    const haut = plafond(Math.max(...series.map((s) => s.total)));
+    const haut = plafond(Math.max(...series.map((s) => s.total + s.port)));
     const duGraphe = parMois ? completes.filter((v) => v.date_vente.startsWith(String(cfg.annee))) : completes;
     const liste = ventes.filter((v) => !cfg.periode || (v.date_vente || "").startsWith(cfg.periode))
       .sort((a, b) => (b.date_vente || "").localeCompare(a.date_vente || "") || a.titre.localeCompare(b.titre, "fr"));
@@ -1605,10 +1660,11 @@ async function vueVentes() {
     app.innerHTML = `
       ${entete("Suivi des ventes")}
       ${!ventes.length ? `<div class="carte vide">Aucune vente enregistrée pour l'instant.<br>Passez une œuvre au statut « Vendu » pour la voir apparaître ici.</div>` : `
-      <div class="tuiles">
-        <div class="tuile"><div class="v">${esc(euros(somme(completes)))}</div><div class="l">Total des ventes</div></div>
+      <div class="tuiles quatre">
+        <div class="tuile"><div class="v">${esc(euros(somme(completes)))}</div><div class="l">Total des ventes, hors port</div></div>
+        <div class="tuile"><div class="v">${esc(euros(sommePort(completes)))}</div><div class="l">Frais de port facturés</div></div>
         <div class="tuile"><div class="v">${ventes.length}</div><div class="l">${ventes.length > 1 ? "Œuvres vendues" : "Œuvre vendue"}</div></div>
-        <div class="tuile"><div class="v">${completes.length ? esc(euros(somme(completes) / completes.length)) : "—"}</div><div class="l">Prix de vente moyen</div></div>
+        <div class="tuile"><div class="v">${completes.length ? esc(euros(Math.round(somme(completes) / completes.length))) : "—"}</div><div class="l">Prix de vente moyen</div></div>
       </div>
       ${incompletes ? `<div class="message info" role="status"><strong>${pluriel(incompletes, "vente")} à compléter.</strong> Sans prix de vente ou sans date, ${incompletes > 1 ? "elles ne sont pas comptées" : "elle n'est pas comptée"} dans le total ni dans le graphique. ${incompletes > 1 ? "Elles sont signalées" : "Elle est signalée"} dans la liste ci-dessous.</div>` : ""}
       <section class="carte bloc">
@@ -1623,12 +1679,15 @@ async function vueVentes() {
           </div>
         </div>
         ${!completes.length ? `<p class="sous">Aucune vente complète à représenter : renseignez le prix de vente et la date des œuvres vendues.</p>` : `
-        <p class="sous" style="margin:0 0 18px">${esc(euros(somme(duGraphe)))} pour ${pluriel(duGraphe.length, "vente")}${parMois ? ` en ${cfg.annee}` : ""}. Touchez une barre pour filtrer la liste.</p>
+        <p class="sous" style="margin:0 0 ${avecPort ? 10 : 18}px">${sommePort(duGraphe)
+          ? `${esc(euros(somme(duGraphe)))} de tableaux et ${esc(euros(sommePort(duGraphe)))} de frais de port, soit ${esc(euros(somme(duGraphe) + sommePort(duGraphe)))} encaissés`
+          : esc(euros(somme(duGraphe)))} pour ${pluriel(duGraphe.length, "vente")}${parMois ? ` en ${cfg.annee}` : ""}. Touchez une barre pour filtrer la liste.</p>
+        ${avecPort ? `<div class="legende"><span><i class="tab"></i>Tableaux</span><span><i class="port"></i>Frais de port</span></div>` : ""}
         <div class="graphe ${cfg.periode ? "filtre" : ""} ${anime ? "anime" : ""}" id="graphe">
           <div class="ordonnees" aria-hidden="true"><span>${esc(euros(haut))}</span><span>${esc(euros(haut / 2))}</span><span>0 €</span></div>
           <div class="zone">
             <div class="trait" style="top:0"></div><div class="trait" style="top:50%"></div>
-            ${series.map((s, i) => `<button class="col" data-i="${i}" style="--i:${i}" aria-pressed="${s.cle === cfg.periode}" aria-label="${esc(`${s.nom} : ${euros(s.total)}, ${pluriel(s.n, "vente")}`)}"><span class="barre" style="height:${s.total ? Math.max(1.5, (s.total / haut) * 100) : 0}%"></span></button>`).join("")}
+            ${series.map((s, i) => `<button class="col" data-i="${i}" style="--i:${i}" aria-pressed="${s.cle === cfg.periode}" aria-label="${esc(`${s.nom} : ${euros(s.total)} de tableaux${s.port ? ` et ${euros(s.port)} de frais de port` : ""}, ${pluriel(s.n, "vente")}`)}"><span class="barre" style="height:${s.total + s.port ? Math.max(1.5, ((s.total + s.port) / haut) * 100) : 0}%">${s.port ? `<i class="seg port" style="flex-grow:${s.port}"></i>` : ""}${s.total ? `<i class="seg tab" style="flex-grow:${s.total}"></i>` : ""}</span></button>`).join("")}
             <div class="infobulle" id="infobulle" hidden></div>
           </div>
           <div class="abscisses" aria-hidden="true">${series.map((s) => `<span><span class="long">${esc(s.long)}</span><span class="court">${esc(s.court)}</span></span>`).join("")}</div>
@@ -1647,7 +1706,8 @@ async function vueVentes() {
             <div class="corps"><div class="titre">${esc(v.titre)}</div>
               <div class="sous">${v.nature ? `${esc(v.nature)}, ` : ""}${v.date_vente ? `<span class="long">${v.nature ? "vendue le " : "Vendue le "}</span>${esc(dateFr(v.date_vente))}` : `<span class="manque">Date à compléter</span>`}</div></div>
             <div class="droite"><div class="montant">${montant(v) != null ? esc(euros(montant(v))) : `<span class="manque">Prix à compléter</span>`}</div>
-              <div class="sous">${v.prix_eur != null ? `Affiché ${esc(euros(Number(v.prix_eur)))}` : "Sans prix affiché"}${ecart ? `, soit ${ecart > 0 ? "+" : "−"}${esc(euros(Math.abs(ecart)))}` : ""}</div></div>
+              <div class="sous">${v.prix_eur != null ? `Affiché ${esc(euros(Number(v.prix_eur)))}` : "Sans prix affiché"}${ecart ? `, soit ${ecart > 0 ? "+" : "−"}${esc(euros(Math.abs(ecart)))}` : ""}</div>
+              ${port(v) ? `<div class="sous port-ligne"><i></i>Port ${esc(euros(port(v)))}</div>` : ""}</div>
           </button>`;
         }).join("") || `<p class="sous" style="padding:10px">Aucune vente sur cette période.</p>`}
         </div>
@@ -1664,8 +1724,9 @@ async function vueVentes() {
     const montrer = (col) => {
       const s = series[+col.dataset.i];
       bulle.textContent = "";
-      const fort = document.createElement("strong"); fort.textContent = euros(s.total);
+      const fort = document.createElement("strong"); fort.textContent = euros(s.total + s.port);
       bulle.append(fort, document.createTextNode(`${s.nom}, ${pluriel(s.n, "vente")}`));
+      if (s.port) { const detail = document.createElement("span"); detail.className = "detail"; detail.textContent = `Tableaux ${euros(s.total)}, port ${euros(s.port)}`; bulle.append(detail); }
       bulle.hidden = false;
       const z = zone.getBoundingClientRect(), c = col.getBoundingClientRect(), demi = bulle.offsetWidth / 2;
       bulle.style.left = Math.min(z.width - demi, Math.max(demi, c.left - z.left + c.width / 2)) + "px";
@@ -1758,7 +1819,7 @@ async function vueAdmin(message = "", type = "info") {
   majLateral("admin");
   window.scrollTo(0, 0);
   app.innerHTML = `<p class="sous">Chargement…</p>`;
-  try { await chargerChamps(); } catch (e) { message = msgErreur(e); type = "erreur"; }
+  try { await chargerChamps(); await chargerTarifs(); } catch (e) { message = msgErreur(e); type = "erreur"; }
   const { count: enCorbeille } = await sb.from("oeuvres").select("id", { count: "exact", head: true }).not("supprime_le", "is", null);
   const carte = (c) => `
     <details class="carte bloc champ" data-champ="${c.id}" ${etat.adminOuvert === c.id ? "open" : ""}>
@@ -1786,6 +1847,19 @@ async function vueAdmin(message = "", type = "info") {
         <p class="sous">${enCorbeille ? `${enCorbeille} œuvre${enCorbeille > 1 ? "s" : ""} supprimée${enCorbeille > 1 ? "s" : ""}, à restaurer ou à effacer définitivement.` : "Aucune œuvre dans la corbeille."}</p>
         <button class="btn large" id="corbeille">Ouvrir la corbeille</button>
       </section>
+      <section class="carte bloc" id="tarifs-port">
+        <h2>Frais de port</h2>
+        <p class="sous">Quatre tarifs, facturés à l'acheteur en plus du prix de l'œuvre. Le tarif se choisit dans la fiche de chaque œuvre. Modifier un montant ici ne change pas les ventes déjà enregistrées.</p>
+        ${etat.tarifs.length ? `
+        <div class="tarifs">
+          <span class="lib" id="tp-col-lib">Libellé</span><span class="lib" id="tp-col-montant">Montant (€)</span>
+          ${etat.tarifs.map((t) => `
+            <input data-tarif="${t.cle}" data-quoi="libelle" value="${esc(t.libelle)}" maxlength="40" autocomplete="off" aria-labelledby="tp-col-lib">
+            <input data-tarif="${t.cle}" data-quoi="montant" value="${esc(enSaisie(t.montant_eur))}" inputmode="decimal" autocomplete="off" aria-label="Montant en euros du tarif ${esc(t.libelle)}">`).join("")}
+        </div>
+        <div id="tp-erreur" role="alert"></div>
+        <button class="btn plein large" id="tp-enregistrer" style="margin-top:14px">Enregistrer les tarifs</button>` : `<div class="message erreur">Les tarifs n'ont pas pu être chargés.</div>`}
+      </section>
       <div id="reglages-certificats"></div>
       <h2 style="margin-top:22px">Champs des fiches</h2>
       ${etat.champs.map(carte).join("")}
@@ -1805,6 +1879,28 @@ async function vueAdmin(message = "", type = "info") {
   monterReglagesCertificats();
   const erreur = (m) => { $("#alerte").innerHTML = `<div class="message erreur">${m}</div>`; window.scrollTo(0, 0); };
   const verifier = (res) => { if (res.error) throw res.error; if (res.data && !res.data.length) throw new Error("Modification refusée : droits insuffisants."); };
+
+  if ($("#tp-enregistrer")) {
+    const zone = $("#tarifs-port");
+    zone.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); e.stopPropagation(); $("#tp-enregistrer").click(); } });
+    $("#tp-enregistrer").addEventListener("click", async () => {
+      const refus = (m, el) => { $("#tp-erreur").innerHTML = `<div class="message erreur">${m}</div>`; el.focus(); };
+      const maj = [];
+      for (const t of etat.tarifs) {
+        const elL = zone.querySelector(`[data-tarif="${t.cle}"][data-quoi="libelle"]`), elM = zone.querySelector(`[data-tarif="${t.cle}"][data-quoi="montant"]`);
+        const libelle = texte(elL.value), m = texte(elM.value) ? nombre(elM.value) : 0;
+        if (!libelle) return refus("Chaque tarif doit avoir un libellé.", elL);
+        if (m === null || m < 0) return refus(`Le montant du tarif « ${esc(libelle)} » doit être un nombre, par exemple 25.`, elM);
+        if (libelle !== t.libelle || m !== t.montant_eur) maj.push({ cle: t.cle, libelle, montant_eur: Math.round(m * 100) / 100 });
+      }
+      if (!maj.length) return vueAdmin("Aucun changement à enregistrer sur les tarifs.");
+      const b = $("#tp-enregistrer"); b.disabled = true; b.setAttribute("aria-busy", "true"); b.textContent = "Enregistrement…";
+      try {
+        for (const { cle, ...valeurs } of maj) verifier(await sb.from("tarifs_port").update(valeurs).eq("cle", cle).select("cle"));
+        vueAdmin("Tarifs de frais de port enregistrés.");
+      } catch (e) { vueAdmin("Les tarifs n'ont pas tous été enregistrés : " + msgErreur(e), "erreur"); }
+    });
+  }
 
   $("#n-ajouter").addEventListener("click", async () => {
     const libelle = texte($("#n-lib").value);
