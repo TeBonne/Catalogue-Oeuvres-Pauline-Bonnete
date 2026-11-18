@@ -371,6 +371,18 @@
 
   /* Sélection multiple */
   .outils-droite { display: flex; align-items: center; gap: 8px; flex: none; }
+  .outils { flex-wrap: wrap; row-gap: 6px; }
+  .outils #resume { flex: 1 1 100%; }
+  .outils-droite { flex: 1 1 100%; min-width: 0; justify-content: flex-end; gap: 4px; }
+  .outils-droite .btn.discret { padding: 0 10px; }
+  select.tri { width: auto; flex: 0 1 172px; min-width: 0; margin-right: auto; min-height: 38px; padding: 6px 24px 6px 11px; font-size: .84rem; font-weight: 550; border-radius: 999px; background-color: #fff; cursor: pointer; text-overflow: ellipsis; }
+  @media (min-width: 720px) {
+    .outils { flex-wrap: nowrap; }
+    .outils #resume { flex: 1 1 auto; }
+    .outils-droite { flex: none; gap: 8px; }
+    .outils-droite .btn.discret { padding: 0 14px; }
+    select.tri { margin-right: 0; flex: none; font-size: .88rem; padding: 6px 30px 6px 14px; }
+  }
   .btn.discret { min-height: 38px; padding: 0 14px; font-size: .88rem; border-color: transparent; background: none; color: var(--accent); }
   .btn.discret:hover:not([disabled]) { background: var(--accent-pale); border-color: transparent; }
   .coche-sel {
@@ -577,12 +589,25 @@ const LIEN_ARRIVEE = new URLSearchParams(location.hash.slice(1));
 let recuperation = LIEN_ARRIVEE.get("type") === "recovery";                     // arrivée par un lien « mot de passe oublié »
 let lienInvalide = !!(LIEN_ARRIVEE.get("error_code") || LIEN_ARRIVEE.get("error")); // lien expiré ou déjà utilisé
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
+// Tris proposés : [libellé, colonne, croissant]. Les fiches sans valeur (année, prix) passent toujours en fin de liste.
+const TRIS = {
+  "ajout-desc":  ["Derniers ajouts", "cree_le", false],
+  "ajout-asc":   ["Premiers ajouts", "cree_le", true],
+  "titre-asc":   ["Titre A → Z", "titre_tri", true],
+  "titre-desc":  ["Titre Z → A", "titre_tri", false],
+  "annee-desc":  ["Année récente", "annee", false],
+  "annee-asc":   ["Année ancienne", "annee", true],
+  "prix-asc":    ["Prix croissant", "prix_eur", true],
+  "prix-desc":   ["Prix décroissant", "prix_eur", false]
+};
+let triMemorise = "ajout-desc";
+try { const t = localStorage.getItem("catalogue-tri"); if (TRIS[t]) triMemorise = t; } catch (_) {}
 let vueMemorisee = "grille";
 try { vueMemorisee = localStorage.getItem("catalogue-vue") === "liste" ? "liste" : "grille"; } catch (_) {}
 const LIBELLES_DEFAUT = { technique: "Technique", support: "Support", nature: "Nature" };
 const TYPES = { texte: "Texte", nombre: "Nombre", liste: "Liste de choix", case: "Case à cocher" };
 const lateral = document.getElementById("lateral");
-const etat = { selection: null, dernier: null, ventes: { grain: "mois", annee: null, periode: null }, jeton: 0, retour: null, gardien: null, modifie: false, adminOuvert: null, section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
+const etat = { selection: null, dernier: null, ventes: { grain: "mois", annee: null, periode: null }, jeton: 0, retour: null, gardien: null, modifie: false, adminOuvert: null, section: "liste:", occupe: false, enCorbeille: 0, vue: vueMemorisee, tri: triMemorise, admin: false, champs: [], utilisateur: null, statut: "", q: "", items: [], total: 0, page: 0, comptes: {}, total_general: 0 };
 
 /* ---------- Utilitaires ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -962,7 +987,7 @@ async function chargerPage(reinitialiser, jeton = etat.jeton) {
   const page = reinitialiser ? 0 : etat.page, debut = page * PAGE;
   const { data, count, error } = await filtrer(
     sb.from("oeuvres").select("id,titre,statut,prix_eur,vignette_path,technique,support,annee,hauteur_cm,largeur_cm", { count: "exact" })
-  ).order("cree_le", { ascending: false }).order("id").range(debut, debut + PAGE - 1);
+  ).order(TRIS[etat.tri][1], { ascending: TRIS[etat.tri][2], nullsFirst: false }).order("id").range(debut, debut + PAGE - 1);
   if (error) throw error;
   if (jeton !== etat.jeton) return; // réponse périmée : une recherche plus récente est en cours
   if (reinitialiser) etat.items = [];
@@ -1042,7 +1067,9 @@ function vueListe() {
     <div class="puces" id="puces" role="group" aria-label="Filtrer par statut"></div>
     <div class="outils">
       <div class="sous" id="resume" aria-live="polite"></div>
-      <div class="outils-droite"><button class="btn discret" id="sel-entrer">Sélectionner</button>
+      <div class="outils-droite">
+      <select id="tri" class="tri" aria-label="Trier le catalogue" title="Trier le catalogue">${Object.entries(TRIS).map(([c, t]) => `<option value="${c}"${c === etat.tri ? " selected" : ""}>${t[0]}</option>`).join("")}</select>
+      <button class="btn discret" id="sel-entrer">Sélectionner</button>
       <div class="segment icones" id="bascule" role="group" aria-label="Mode d'affichage">
         <button data-vue="grille" title="Afficher en vignettes"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg><span class="lib">Vignettes</span></button>
         <button data-vue="liste" title="Afficher en liste"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="4" height="4" rx="1"/><rect x="8" y="4" width="10" height="2" rx="1"/><rect x="2" y="8" width="4" height="4" rx="1"/><rect x="8" y="9" width="10" height="2" rx="1"/><rect x="2" y="13" width="4" height="4" rx="1"/><rect x="8" y="14" width="10" height="2" rx="1"/></svg><span class="lib">Liste</span></button>
@@ -1082,6 +1109,13 @@ function vueListe() {
   $("#sel-quitter").addEventListener("click", () => { etat.selection = null; majSelection(); });
   $("#sel-corbeille").addEventListener("click", selectionCorbeille);
   app.querySelectorAll("[data-lot]").forEach((b) => b.addEventListener("click", () => selectionModifier(b.dataset.lot || null)));
+  $("#tri").addEventListener("change", (e) => {
+    etat.tri = TRIS[e.target.value] ? e.target.value : "ajout-desc";
+    try { localStorage.setItem("catalogue-tri", etat.tri); } catch (_) {}
+    etat.dernier = null; // l'ordre change : le repère de sélection par plage n'est plus valable
+    $("#grille").setAttribute("aria-busy", "true");
+    rafraichirListe(false);
+  });
   $("#bascule").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-vue]"); if (!b) return;
     etat.vue = b.dataset.vue;
