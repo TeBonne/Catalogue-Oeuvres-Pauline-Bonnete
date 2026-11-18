@@ -386,6 +386,10 @@ async function vueCertificatNouveau(oeuvreId) {
   $("#retour").addEventListener("click", retour); $("#c-annuler").addEventListener("click", retour);
   if (manquants.length) $("#c-completer").addEventListener("click", retour);
   let texteModifie = false;
+  if (o.acheteur_id) sb.from("acheteurs").select("prenom,nom,email").eq("id", o.acheteur_id).single().then(({ data }) => { // acheteur de la vente, proposé par défaut
+    if (!data || !$("#c-prenom")) return;
+    for (const [champ, valeur] of [["c-prenom", data.prenom], ["c-nom", data.nom], ["c-email", data.email]]) if (valeur && !$("#" + champ).value) $("#" + champ).value = valeur;
+  });
   const poserTexte = () => { if (!texteModifie) $("#c-texte").value = $("#c-nature").value === "Reproduction" ? reglages.texte_reproduction : reglages.texte_original; };
   poserTexte();
   $("#c-texte").addEventListener("input", () => { texteModifie = true; });

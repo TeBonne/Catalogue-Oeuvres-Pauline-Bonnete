@@ -215,6 +215,10 @@ body.editeur-ouvert { overflow: hidden; }
 /* Navigation latérale */
 #lateral { box-shadow: 1px 0 0 var(--trait); border-right: 0; }
 .lat-marque { font: 700 1.3rem/1.1 var(--titre); letter-spacing: -.02em; }
+/* Fichier des acheteurs */
+.initiales { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--accent-pale); color: var(--accent-fonce); font: 700 .95rem var(--titre); }
+#liste-acheteurs .vente:first-child, #ach-achats .vente:first-child { border-top: 0; }
+
 /* Sur téléphone, la même navigation devient un menu coulissant */
 .lat-fermer { display: none; }
 #voile-menu { display: none; }

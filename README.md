@@ -27,6 +27,7 @@ js/
   corbeille.js        Corbeille
   administration.js   Champs des fiches, listes de choix, tarifs de frais de port
   import.js           Import en lot de photos
+  acheteurs.js        Fichier des acheteurs (administrateur)
   certificats.js      Certificats d'authenticité (émission, PDF, historique)
   recadrage.js        Éditeur de photo
   tutoriel.js         Tutoriel de prise en main

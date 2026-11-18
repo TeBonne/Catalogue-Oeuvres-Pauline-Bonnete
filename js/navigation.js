@@ -40,7 +40,7 @@ function majLateral(section) {
     ${lien("liste:reserve", "Réservé", etat.comptes.reserve ?? "", point("reserve"))}
     ${lien("liste:vendu", "Vendu", etat.comptes.vendu ?? "", point("vendu"))}
     ${lien("liste:pas_a_vendre", "Pas à vendre", etat.comptes.pas_a_vendre ?? "", point("pas_a_vendre"))}
-    ${etat.admin ? `<div class="lat-titre">Suivi</div>${lien("ventes", "Suivi des ventes", null, ICONES.graphique)}` : ""}
+    ${etat.admin ? `<div class="lat-titre">Suivi</div>${lien("ventes", "Suivi des ventes", null, ICONES.graphique)}${lien("acheteurs", "Acheteurs", null, ICONES.personnes)}` : ""}
     <div class="lat-titre">Documents</div>
     ${etat.admin ? lien("certificats", "Certificats d'authenticité", null, ICONES.document) : `<button class="lat-lien" disabled><span>${ICONES.document}<span>Certificats d'authenticité</span></span></button>`}
     ${etat.admin ? `<div class="lat-titre">Maintenance</div>${lien("corbeille", "Corbeille", etat.enCorbeille, ICONES.corbeille)}` : ""}
@@ -57,6 +57,7 @@ lateral.addEventListener("click", async (e) => {
   if (nav === "admin") vueAdmin();
   else if (nav === "corbeille") vueCorbeille();
   else if (nav === "ventes") vueVentes();
+  else if (nav === "acheteurs") vueAcheteurs();
   else if (nav === "certificats") vueCertificats();
   else if (nav === "tutoriel") lancerTutoriel();
   else if (nav === "sortir") sb.auth.signOut();

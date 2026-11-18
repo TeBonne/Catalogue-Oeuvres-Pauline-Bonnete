@@ -214,7 +214,7 @@ def test_tutoriel_premiere_connexion(ouvrir):
 def test_toutes_les_vues(ouvrir):
     p = ouvrir()
     for vue in ["vueFiche('o0')", "vueFiche(null)", "etat.modifie = false; vueAdmin()", "vueCorbeille()", "vueImport()", "vueVentes()",
-                "vueCertificats()", "vueCertificat('k1')", "etat.vue = 'liste'; vueListe()"]:
+                "vueCertificats()", "vueCertificat('k1')", "vueAcheteurs()", "vueAcheteur('a1')", "etat.vue = 'liste'; vueListe()"]:
         js(p, vue); p.wait_for_timeout(500)
         assert p.locator("#app").inner_text().strip(), vue
         assert not deborde(p), f"débordement horizontal : {vue}"
@@ -235,3 +235,50 @@ def test_menu_sur_telephone(ouvrir, ecran):
     assert p.locator("h1").inner_text() == "Certificats d'authenticité"
     assert not p.evaluate("document.body.classList.contains('menu-ouvert')")
     assert not deborde(p)
+
+
+# ---------- Acheteurs ----------
+def test_fichier_des_acheteurs(ouvrir):
+    p = ouvrir()
+    js(p, "vueAcheteurs()"); p.wait_for_timeout(700)
+    lignes = [SANS_ESPACES(t).replace("\n", " | ") for t in p.locator("#liste-acheteurs .vente").all_inner_texts()]
+    assert lignes[0].startswith("PD | Paul Durand") and "Aucun achat rattaché" in lignes[0]
+    assert "Hélène Martin" in lignes[1] and "1 100 €" in lignes[1] and "2 achats" in lignes[1]
+    p.fill("#ach-q", "helene"); p.wait_for_timeout(350); assert p.locator("#liste-acheteurs .vente").count() == 1
+    p.fill("#ach-q", ""); p.wait_for_timeout(350)
+    # création : erreurs puis enregistrement
+    p.click("#ach-ajouter"); p.wait_for_timeout(400)
+    p.click("#ach-valider"); assert "au moins un prénom" in p.locator("#alerte").inner_text()
+    p.fill("#ach-nom", "Le Gall"); p.fill("#ach-email", "pas-un-mail"); p.click("#ach-valider")
+    assert "e-mail n'est pas valide" in p.locator("#alerte").inner_text()
+    p.fill("#ach-email", "Yann.LeGall@Exemple.fr"); p.click("#ach-valider"); p.wait_for_timeout(600)
+    assert "a été ajouté" in p.locator("#alerte").inner_text()
+    assert base(p, "acheteurs.find(a => a.nom === 'Le Gall').email") == "yann.legall@exemple.fr"
+    # fiche d'un acheteur : ses achats, puis suppression (les ventes restent)
+    p.locator("#liste-acheteurs .vente", has_text="Hélène Martin").click(); p.wait_for_timeout(600)
+    assert p.locator("#ach-achats .vente").count() == 2
+    p.click("#ach-supprimer"); p.wait_for_timeout(2400); p.click('.dialogue [data-r="oui"]'); p.wait_for_timeout(600)
+    assert base(p, "acheteurs.some(a => a.id === 'a1')") is False
+    assert base(p, "oeuvres.find(o => o.id === 'o3').statut") == "vendu" and base(p, "oeuvres.find(o => o.id === 'o3').acheteur_id") is None
+    assert not deborde(p)
+
+
+def test_acheteur_depuis_la_fiche(ouvrir):
+    p = ouvrir()
+    o = "oeuvres.find(o => o.id === 'o0')"
+    js(p, "vueFiche('o0')"); p.wait_for_timeout(600)     # œuvre vendue, sans acheteur
+    assert p.input_value("#acheteur") == ""
+    p.select_option("#acheteur", "a2"); p.click("#valider"); p.wait_for_timeout(600)
+    assert base(p, o + ".acheteur_id") == "a2"
+    js(p, "vueFiche('o0')"); p.wait_for_timeout(600)
+    p.select_option("#acheteur", "__nouveau"); assert p.locator("#acheteur-nouveau").is_visible()
+    p.click("#valider"); p.wait_for_timeout(200); assert "nouvel acheteur" in p.locator("#alerte .message").inner_text()
+    p.fill("#na-prenom", "Anne"); p.fill("#na-nom", "Riou"); p.click("#valider"); p.wait_for_timeout(700)
+    assert base(p, "acheteurs.find(a => a.id === window.__db." + o + ".acheteur_id).nom") == "Riou"
+    # le certificat reprend l'acheteur de la vente
+    js(p, "vueCertificatNouveau('o0')"); p.wait_for_timeout(800)
+    assert [p.input_value("#c-prenom"), p.input_value("#c-nom")] == ["Anne", "Riou"]
+    # quitter le statut « Vendu » détache l'acheteur
+    js(p, "etat.modifie = false; vueFiche('o0')"); p.wait_for_timeout(600)
+    p.select_option("#statut", "disponible"); p.click("#valider"); p.wait_for_timeout(600)
+    assert base(p, o + ".acheteur_id") is None

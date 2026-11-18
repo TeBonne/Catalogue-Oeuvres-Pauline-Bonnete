@@ -21,6 +21,8 @@ async function vueFiche(id, origine) {
     if (error) { app.innerHTML = `<div class="message erreur">${msgErreur(error)}</div><button class="btn" id="retour">Retour</button>`; $("#retour").onclick = vueListe; return; }
     o = data;
   }
+  let acheteurs = [];
+  if (etat.admin) { try { acheteurs = await chargerAcheteurs(); } catch (_) {} }
   const listes = await suggestions();
   try { await chargerChamps(); } catch (_) {}
   const perso = o.champs_perso || {};
@@ -88,6 +90,22 @@ async function vueFiche(id, origine) {
           <label for="port_facture">Frais de port facturés (€)</label>
           <input id="port_facture" class="champ-court" inputmode="decimal" autocomplete="off" value="${esc(enSaisie(o.port_facture_eur))}" aria-describedby="port-aide">
           <p class="aide" id="port-aide">Facturés à l'acheteur en plus du prix. Le montant reprend le tarif choisi dans « Frais de port », reste modifiable et ne changera plus si les tarifs évoluent. Laissez vide pour une remise en main propre.</p>
+          ${etat.admin ? `
+          <label for="acheteur">Acheteur</label>
+          <select id="acheteur" aria-describedby="acheteur-aide">
+            <option value="">Non renseigné</option>
+            ${acheteurs.map((a) => `<option value="${a.id}" ${o.acheteur_id === a.id ? "selected" : ""}>${esc(nomAcheteur(a))}${a.email && (a.prenom || a.nom) ? ` (${esc(a.email)})` : ""}</option>`).join("")}
+            <option value="__nouveau">Nouvel acheteur…</option>
+          </select>
+          <div id="acheteur-nouveau" hidden>
+            <div class="deux" style="margin-top:12px">
+              <div><label for="na-prenom">Prénom</label><input id="na-prenom" autocomplete="off"></div>
+              <div><label for="na-nom">Nom</label><input id="na-nom" autocomplete="off"></div>
+            </div>
+            <label for="na-email">E-mail</label>
+            <input id="na-email" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="off">
+          </div>
+          <p class="aide" id="acheteur-aide">Visible des administrateurs uniquement. Le fichier complet se trouve dans la rubrique « Acheteurs ».</p>` : ""}
         </div>
 
         <h2 class="section">Caractéristiques</h2>
@@ -170,6 +188,7 @@ async function vueFiche(id, origine) {
   }
   $("#port_facture").addEventListener("input", (e) => { portSaisi = texte(e.target.value) !== null; });
   $("#port_type").addEventListener("change", proposerPort);
+  if ($("#acheteur")) $("#acheteur").addEventListener("change", (e) => { const neuf = e.target.value === "__nouveau"; $("#acheteur-nouveau").hidden = !neuf; if (neuf) $("#na-prenom").focus(); });
   $("#retour").addEventListener("click", quitter);
   $("#annuler").addEventListener("click", quitter);
   $("#photo").addEventListener("change", (e) => {
@@ -240,6 +259,15 @@ async function vueFiche(id, origine) {
     if (vendu && dv && dv > aujourdhui()) return alerte("La date de la vente ne peut pas être dans le futur.", "date_vente");
     const pf = vendu ? nombre($("#port_facture").value) : null;
     if (vendu && texte($("#port_facture").value) && (pf === null || pf < 0)) return alerte("Les frais de port doivent être un nombre, par exemple 25.", "port_facture");
+    let acheteurId = vendu ? (o.acheteur_id ?? null) : null, nouvelAcheteur = null;
+    if (vendu && $("#acheteur")) {
+      const choix = $("#acheteur").value;
+      if (choix === "__nouveau") {
+        nouvelAcheteur = { prenom: texte($("#na-prenom").value), nom: texte($("#na-nom").value), email: texte($("#na-email").value) ? texte($("#na-email").value).toLowerCase() : null };
+        if (!nouvelAcheteur.prenom && !nouvelAcheteur.nom && !nouvelAcheteur.email) return alerte("Renseignez au moins un prénom, un nom ou un e-mail pour le nouvel acheteur.", "na-prenom");
+        if (nouvelAcheteur.email && !emailValide(nouvelAcheteur.email)) return alerte("L'adresse e-mail de l'acheteur n'est pas valide.", "na-email");
+      } else acheteurId = choix || null;
+    }
     const cp = { ...(o.champs_perso || {}) };
     for (const c of champsPerso()) {
       const el = document.getElementById("cp-" + c.id); if (!el) continue;
@@ -250,7 +278,7 @@ async function vueFiche(id, origine) {
     const valeurs = {
       titre: texte($("#titre").value) || "Sans titre", statut: $("#statut").value,
       prix_vendu_eur: pv, date_vente: dv || null,
-      port_type: $("#port_type").value || null, port_facture_eur: pf,
+      port_type: $("#port_type").value || null, port_facture_eur: pf, acheteur_id: acheteurId,
       technique: texte($("#technique").value), support: texte($("#support").value),
       nature: texte($("#nature").value), serie: texte($("#serie").value),
       hauteur_cm: h, largeur_cm: l, annee: a, prix_eur: p, prix_masque: $("#prix_masque").checked,
@@ -261,6 +289,11 @@ async function vueFiche(id, origine) {
     const bouton = $("#valider"); bouton.disabled = true; bouton.setAttribute("aria-busy", "true"); bouton.textContent = "Enregistrement…"; alerte("");
     try {
       const oid = id || crypto.randomUUID();
+      if (nouvelAcheteur) { // créé d'abord, pour rattacher la vente à son identifiant
+        const cree = await sb.from("acheteurs").insert(nouvelAcheteur).select("id");
+        if (cree.error || !cree.data.length) throw cree.error || new Error("L'acheteur n'a pas pu être créé : droits insuffisants.");
+        valeurs.acheteur_id = cree.data[0].id;
+      }
       const chemins = fichier ? await envoyerPhoto(oid, fichier) : {};
       if (fichier && choisi) { chemins.fichier_origine = choisi.nom; chemins.poids_origine_octets = choisi.poids; }
       else delete chemins.poids_origine_octets; // simple recadrage : le fichier d'origine reste le même

@@ -27,7 +27,10 @@
         photo_path: "certificats/k0/photo.jpg", acheteur_prenom: null, acheteur_nom: null, acheteur_email: null, annule_le: "2025-11-22T10:00:00Z", email_prepare_le: null }
     ],
     tarifs_port: [{ cle: "petit", libelle: "Petit", montant_eur: 15, ordre: 1 }, { cle: "moyen", libelle: "Moyen", montant_eur: 28.5, ordre: 2 }, { cle: "gros", libelle: "Gros", montant_eur: 45, ordre: 3 }, { cle: "tres_gros", libelle: "Très gros", montant_eur: 0, ordre: 4 }],
+    acheteurs: [{ id: "a1", prenom: "Hélène", nom: "Martin", email: "helene.martin@exemple.fr", telephone: null, ville: "Vannes", notes: null },
+      { id: "a2", prenom: "Paul", nom: "Durand", email: null, telephone: "06 00 00 00 00", ville: null, notes: "Collectionneur" }],
     oeuvres: titres.map((t, i) => ({
+      acheteur_id: i === 3 || i === 9 ? "a1" : null,
       port_type: statuts[i] === "vendu" && i % 2 ? "moyen" : null, port_facture_eur: statuts[i] === "vendu" && i % 2 ? 28.5 : null,
       id: "o" + i, titre: t, statut: statuts[i], technique: tech[i], support: tech[i] ? (i % 2 ? "Toile" : "Papier type Canson") : null, nature: tech[i] ? "Original" : null,
       serie: i % 3 === 0 ? "Bord de mer" : null, hauteur_cm: tech[i] ? 30 + i : null, largeur_cm: tech[i] ? 40 + i : null, annee: tech[i] ? 2020 + (i % 6) : null,
@@ -42,7 +45,7 @@
     let charge = null, rows = db[table].slice(), head = false, wantCount = false, single = false, range = null, op = "select";
     const q = {
       select(_, o) { if (o && o.count) wantCount = true; if (o && o.head) head = true; return q; },
-      insert() { op = "w"; return q; }, update(v) { op = "u"; charge = v; return q; }, delete() { op = "w"; return q; },
+      insert(v) { op = "i"; charge = v; return q; }, update(v) { op = "u"; charge = v; return q; }, delete() { op = "d"; return q; },
       in(c, l) { rows = rows.filter((r) => l.includes(r[c])); return q; },
       eq(c, v) { rows = rows.filter((r) => r[c] === v); return q; },
       is(c, v) { rows = rows.filter((r) => (r[c] ?? null) === v); return q; },
@@ -64,7 +67,9 @@
         return q;
       }, limit(n) { rows = rows.slice(0, n); return q; },
       range(a, b) { range = [a, b]; return q; }, single() { single = true; return q; },
-      then(ok) { if (op === "u") rows.forEach((r) => Object.assign(r, charge)); const count = rows.length; let data = range ? rows.slice(range[0], range[1] + 1) : rows; if (single) data = data[0]; if (head) data = null; if (data) data = JSON.parse(JSON.stringify(data)); /* comme une vraie API : des copies */ return Promise.resolve({ data, count: wantCount ? count : null, error: null }).then(ok); }
+      then(ok) { if (op === "u") rows.forEach((r) => Object.assign(r, charge));
+        if (op === "i") { rows = [].concat(charge).map((x) => ({ id: x.id || crypto.randomUUID(), ...JSON.parse(JSON.stringify(x)) })); db[table].push(...rows); }
+        if (op === "d") { db[table] = db[table].filter((r) => !rows.includes(r)); if (table === "acheteurs") db.oeuvres.forEach((o) => { if (rows.some((r) => r.id === o.acheteur_id)) o.acheteur_id = null; }); } const count = rows.length; let data = range ? rows.slice(range[0], range[1] + 1) : rows; if (single) data = data[0]; if (head) data = null; if (data) data = JSON.parse(JSON.stringify(data)); /* comme une vraie API : des copies */ return Promise.resolve({ data, count: wantCount ? count : null, error: null }).then(ok); }
     };
     return q;
   }

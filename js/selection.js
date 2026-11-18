@@ -80,13 +80,13 @@ function demanderChamp(n, impose) {
         ? `<select id="lot-valeur">${c.options().map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("")}</select>`
         : `<input id="lot-valeur" inputmode="${c.saisie}" autocomplete="off" placeholder="Laisser vide pour effacer la valeur">`;
       q("#lot-aide").textContent = c.cle === "statut"
-        ? "Une œuvre vendue qui passe à un autre statut perd son prix de vente, sa date de vente et ses frais de port facturés."
+        ? "Une œuvre vendue qui passe à un autre statut perd son prix de vente, sa date de vente, ses frais de port facturés et son acheteur."
         : `La valeur actuelle de ce champ sera remplacée sur ${n > 1 ? "toutes les œuvres sélectionnées" : "l'œuvre sélectionnée"}.`;
       q("#lot-erreur").innerHTML = "";
     };
     const lire = () => {
       const c = champ(), v = q("#lot-valeur").value;
-      if (c.cle === "statut") return v === "vendu" ? { statut: v } : { statut: v, prix_vendu_eur: null, date_vente: null, port_facture_eur: null };
+      if (c.cle === "statut") return v === "vendu" ? { statut: v } : { statut: v, prix_vendu_eur: null, date_vente: null, port_facture_eur: null, acheteur_id: null };
       if (c.cle === "prix_masque") return { prix_masque: v === "oui" };
       if (c.cle === "encadre") return { encadre: v === "" ? null : v === "oui" };
       if (c.cle === "annee") {
