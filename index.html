@@ -573,6 +573,9 @@ const LISTES = { // listes fermées, traitées comme le statut
 };
 
 const app = document.getElementById("app");
+const LIEN_ARRIVEE = new URLSearchParams(location.hash.slice(1));
+let recuperation = LIEN_ARRIVEE.get("type") === "recovery";                     // arrivée par un lien « mot de passe oublié »
+let lienInvalide = !!(LIEN_ARRIVEE.get("error_code") || LIEN_ARRIVEE.get("error")); // lien expiré ou déjà utilisé
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 let vueMemorisee = "grille";
 try { vueMemorisee = localStorage.getItem("catalogue-vue") === "liste" ? "liste" : "grille"; } catch (_) {}
@@ -804,7 +807,8 @@ function vueConnexion(message = "", type = "erreur") {
         <input id="mdp" type="password" autocomplete="current-password" minlength="8" required aria-describedby="mdp-aide">
         <p class="aide" id="mdp-aide">8 caractères minimum.</p>
         <label class="coche" for="voir"><input id="voir" type="checkbox"> Afficher le mot de passe</label>
-        <div style="display:grid;gap:10px;margin-top:18px">
+        <button class="btn discret" type="button" id="oubli" style="margin:4px 0 0 -14px">Mot de passe oublié ?</button>
+        <div style="display:grid;gap:10px;margin-top:14px">
           <button class="btn plein large" type="submit">Se connecter</button>
           <button class="btn large" type="button" id="creer">Créer mon compte</button>
         </div>
@@ -815,6 +819,7 @@ function vueConnexion(message = "", type = "erreur") {
   monterAccueil();
   const lire = () => ({ email: $("#email").value.trim(), password: $("#mdp").value });
   $("#voir").addEventListener("change", (e) => { $("#mdp").type = e.target.checked ? "text" : "password"; });
+  $("#oubli").addEventListener("click", () => vueMotDePasseOublie($("#email").value.trim()));
   const occuper = (b, t) => { app.querySelectorAll("#f button").forEach((x) => { x.disabled = true; }); b.textContent = t; };
   $("#f").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -828,6 +833,82 @@ function vueConnexion(message = "", type = "erreur") {
     const { data, error } = await sb.auth.signUp({ ...lire(), options: { emailRedirectTo: location.origin + location.pathname } });
     if (error) return vueConnexion(msgErreur(error));
     if (!data.session) vueConnexion("Compte créé. Un e-mail de confirmation vient de vous être envoyé : cliquez sur le lien qu'il contient, puis revenez vous connecter ici.", "info");
+  });
+}
+
+function gabaritAccueil(interieur) {
+  masquerLateral();
+  app.innerHTML = `
+    <div class="accueil" id="accueil">
+    <div class="accueil-fond" id="accueil-fond" aria-hidden="true"></div>
+    <div class="carte accueil-carte">${interieur}</div>
+    </div>`;
+  monterAccueil();
+}
+const erreurAuth = (e) => {
+  const m = (e && e.message) || "";
+  if ((e && e.status === 429) || /rate limit|security purposes/i.test(m)) return "Trop de demandes en peu de temps. Patientez quelques minutes avant de réessayer.";
+  if (/different from the old password/i.test(m)) return "Le nouveau mot de passe doit être différent de l'ancien.";
+  if (/at least \d+ characters|weak/i.test(m)) return "Ce mot de passe est trop court ou trop simple. Choisissez-en un d'au moins 8 caractères.";
+  if (/session.*missing|not authenticated|jwt/i.test(m)) return "Ce lien n'est plus valable. Demandez-en un nouveau avec « Mot de passe oublié ? ».";
+  return msgErreur(e);
+};
+
+function vueMotDePasseOublie(emailInitial = "", message = "", type = "erreur") {
+  gabaritAccueil(`
+      <h1>Mot de passe oublié</h1>
+      <p class="sous" style="margin-top:6px">Indiquez votre adresse e-mail : vous recevrez un lien pour choisir un nouveau mot de passe.</p>
+      <div role="alert">${message ? `<div class="message ${type}">${message}</div>` : ""}</div>
+      <form id="f">
+        <label for="email">Adresse e-mail</label>
+        <input id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" required value="${esc(emailInitial)}">
+        <div style="display:grid;gap:10px;margin-top:18px">
+          <button class="btn plein large" type="submit">Recevoir le lien</button>
+          <button class="btn large" type="button" id="retour-connexion">Retour à la connexion</button>
+        </div>
+      </form>`);
+  $("#retour-connexion").addEventListener("click", () => vueConnexion());
+  $("#f").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("#email").value.trim(), b = $("#f button[type=submit]");
+    b.disabled = true; b.setAttribute("aria-busy", "true"); b.textContent = "Envoi…";
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) return vueMotDePasseOublie(email, erreurAuth(error));
+    // Même message qu'un compte existe ou non : on ne révèle pas quelles adresses ont un compte
+    vueMotDePasseOublie(email, "Si un compte existe pour cette adresse, un e-mail vient de lui être envoyé. Ouvrez-le et cliquez sur le lien sans trop attendre : il n'est valable qu'un temps limité. Pensez à regarder dans les indésirables.", "info");
+  });
+}
+
+function vueNouveauMotDePasse(message = "") {
+  if (!message && $("#nouveau-mdp")) return; // déjà affiché : on ne vide pas la saisie en cours
+  gabaritAccueil(`
+      <h1>Nouveau mot de passe</h1>
+      <p class="sous" style="margin-top:6px">Choisissez le mot de passe que vous utiliserez désormais pour vous connecter.</p>
+      <div role="alert">${message ? `<div class="message erreur">${message}</div>` : ""}</div>
+      <form id="f">
+        <label for="nouveau-mdp">Nouveau mot de passe</label>
+        <input id="nouveau-mdp" type="password" autocomplete="new-password" minlength="8" required aria-describedby="nmdp-aide">
+        <p class="aide" id="nmdp-aide">8 caractères minimum.</p>
+        <label class="coche" for="voir"><input id="voir" type="checkbox"> Afficher le mot de passe</label>
+        <div style="display:grid;gap:10px;margin-top:18px">
+          <button class="btn plein large" type="submit">Enregistrer le mot de passe</button>
+        </div>
+      </form>`);
+  $("#voir").addEventListener("change", (e) => { $("#nouveau-mdp").type = e.target.checked ? "text" : "password"; });
+  $("#nouveau-mdp").focus();
+  $("#f").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const mdp = $("#nouveau-mdp").value;
+    if (mdp.length < 8) return vueNouveauMotDePasse("Le mot de passe doit comporter au moins 8 caractères.");
+    const b = $("#f button[type=submit]"); b.disabled = true; b.setAttribute("aria-busy", "true"); b.textContent = "Enregistrement…";
+    const { error } = await sb.auth.updateUser({ password: mdp });
+    if (error) return vueNouveauMotDePasse(erreurAuth(error));
+    recuperation = false;
+    try { history.replaceState(null, "", location.pathname); } catch (_) {}
+    const { data } = await sb.auth.getSession();
+    etat.utilisateur = null;
+    await demarrer(data.session);
+    bandeau("Mot de passe modifié. Vous êtes connecté.");
   });
 }
 
@@ -1831,8 +1912,18 @@ window.addEventListener("beforeunload", (e) => { if (etat.modifie || etat.occupe
 
 /* ---------- Démarrage ---------- */
 sb.auth.onAuthStateChange((evenement, session) => {
+  if (evenement === "PASSWORD_RECOVERY") recuperation = true;
   if (evenement === "TOKEN_REFRESHED" || evenement === "USER_UPDATED") return;
-  setTimeout(() => demarrer(session), 0);
+  setTimeout(() => {
+    if (recuperation && session) return vueNouveauMotDePasse();           // lien « mot de passe oublié » : on choisit d'abord le nouveau
+    if (lienInvalide && !session) {                                         // lien expiré ou déjà utilisé
+      lienInvalide = false; recuperation = false;
+      try { history.replaceState(null, "", location.pathname); } catch (_) {}
+      etat.utilisateur = null;
+      return vueConnexion("Ce lien a expiré ou a déjà été utilisé. Pour un nouveau mot de passe, utilisez « Mot de passe oublié ? » ; pour confirmer un compte, connectez-vous simplement.");
+    }
+    demarrer(session);
+  }, 0);
 });
 </script>
 <script src="certificats.js"></script>
