@@ -671,6 +671,7 @@ const prix = (v) => v == null ? "" : new Intl.NumberFormat("fr-FR", { style: "cu
 const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ICONES = {
   retour: svg('<path d="M15 18l-6-6 6-6"/>'),
+  telecharger: svg('<path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/>'),
   filtres: svg('<path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/>'),
   reglages: svg('<path d="M4 6h8M18 6h2M4 12h2M12 12h8M4 18h10M20 18h0"/><circle cx="15" cy="6" r="2.5"/><circle cx="9" cy="12" r="2.5"/><circle cx="17" cy="18" r="2.5"/>'),
   sortir: svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'),
@@ -1734,9 +1735,27 @@ async function vueVentes() {
       "prix-asc": (a, b) => dernier(montant(a), montant(b)) || montant(a) - montant(b) || parTitre(a, b),
       "titre-asc": parTitre
     };
+    let affichees = [];
+    // Export CSV de la liste telle qu'affichée (filtres et tri compris) : point-virgule, virgule décimale et BOM pour Excel en français
+    function exporter() {
+      const nb = (x) => (x == null ? "" : String(Math.round(Number(x) * 100) / 100).replace(".", ","));
+      const cellule = (x) => { let t = x == null ? "" : String(x); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return /[";\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }; // pas de formule exécutable à l'ouverture
+      const lignes = [["Date de vente", "Titre", "Nature", "Technique", "Prix affiché (€)", "Prix de vente (€)", "Frais de port facturés (€)", "Total encaissé (€)", "Fiche de vente"]];
+      for (const v of affichees) {
+        const m = montant(v);
+        lignes.push([v.date_vente ? dateFr(v.date_vente) : "", v.titre, v.nature, v.technique, nb(v.prix_eur), nb(m), port(v) ? nb(port(v)) : "", m == null ? "" : nb(m + port(v)), m != null && v.date_vente ? "Complète" : "À compléter"]);
+      }
+      const csv = "\ufeff" + lignes.map((l) => l.map((x, i) => (i >= 4 && i <= 7 ? x : cellule(x))).join(";")).join("\r\n") + "\r\n";
+      const lien = document.createElement("a"), adresse = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      lien.href = adresse; lien.download = `ventes-pauline-bonnete-${aujourdhui()}.csv`;
+      document.body.append(lien); lien.click(); lien.remove();
+      setTimeout(() => URL.revokeObjectURL(adresse), 4000);
+      bandeau(`${pluriel(affichees.length, "vente")} exportée${affichees.length > 1 ? "s" : ""} dans le fichier ${lien.download}`);
+    }
     function maj() {
       const liste = ventes.filter(retenue).sort(ORDRES[cfg.tri] || ORDRES["date-desc"]), la = actifs();
       const comptees = liste.filter((v) => montant(v) != null && v.date_vente), horsTotal = liste.length - comptees.length, nbPanneau = la.filter(([c]) => c !== "periode" && c !== "q").length;
+      affichees = liste; $("#v-export").disabled = !liste.length;
       $("#v-nb").hidden = !nbPanneau; $("#v-nb").textContent = nbPanneau;
       $("#v-actifs").hidden = !la.length;
       $("#v-actifs").innerHTML = la.length ? `<span class="sous">Filtres actifs</span>${la.map(([c, l]) => `<span class="actif">${esc(l)}<button type="button" data-retirer="${c}" aria-label="Retirer le filtre : ${esc(l)}">${ICONES.fermer}</button></span>`).join("")}<button class="btn discret" type="button" id="v-tout">Tout effacer</button>` : "";
@@ -1756,6 +1775,7 @@ async function vueVentes() {
     let attente;
     $("#v-q").addEventListener("input", (e) => { clearTimeout(attente); attente = setTimeout(() => { f.q = e.target.value.trim(); maj(); }, 200); });
     $("#v-tri").addEventListener("change", (e) => { cfg.tri = e.target.value; maj(); });
+    $("#v-export").addEventListener("click", exporter);
     $("#v-filtres").addEventListener("click", () => { cfg.panneau = !cfg.panneau; $("#v-panneau").hidden = !cfg.panneau; $("#v-filtres").setAttribute("aria-expanded", String(cfg.panneau)); if (cfg.panneau) $("#vf-du").focus(); });
     $("#v-panneau").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -1832,6 +1852,7 @@ async function vueVentes() {
       <section class="carte bloc" style="padding:8px" id="bloc-liste">
         <div class="commandes" style="padding:10px 10px 0;margin-bottom:10px">
           <h2 style="margin:0">Liste des ventes</h2>
+          <button class="btn" id="v-export" style="min-height:40px" title="Télécharger la liste affichée au format CSV (Excel, Numbers, LibreOffice)">${ICONES.telecharger}Exporter</button>
         </div>
         <div class="outils-ventes">
           <input id="v-q" type="search" enterkeyhint="search" placeholder="Rechercher un titre…" aria-label="Rechercher une vente par titre" value="${esc(cfg.f.q)}">
