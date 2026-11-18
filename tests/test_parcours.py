@@ -282,3 +282,39 @@ def test_acheteur_depuis_la_fiche(ouvrir):
     js(p, "etat.modifie = false; vueFiche('o0')"); p.wait_for_timeout(600)
     p.select_option("#statut", "disponible"); p.click("#valider"); p.wait_for_timeout(600)
     assert base(p, o + ".acheteur_id") is None
+
+
+# ---------- Photos complémentaires ----------
+import base64
+PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGP8z8Dwn4EIwESMolGFAEo5AQ9XtVgkAAAAAElFTkSuQmCC")
+
+
+def test_photos_complementaires(ouvrir):
+    p = ouvrir()
+    photos = lambda: base(p, "photos_oeuvre.filter(x => x.oeuvre_id === 'o0').map(x => x.photo_path)")
+    js(p, "vueFiche('o0')"); p.wait_for_timeout(700)
+    assert p.locator(".galerie figure").count() == 2 and "2 sur 8" in p.locator(".galerie-titre").inner_text()
+    p.set_input_files("#photos-plus", [{"name": f"detail-{i}.png", "mimeType": "image/png", "buffer": PNG} for i in range(2)]); p.wait_for_timeout(1200)
+    assert p.locator(".galerie figure").count() == 4 and "2 photos ajoutées" in p.locator("#galerie-message").inner_text()
+    assert len(photos()) == 4 and all(c.startswith("o0/plus-") for c in photos()[2:])
+    assert p.evaluate("etat.modifie") is False, "ajouter une photo ne marque pas la fiche comme modifiée"
+    # suppression
+    p.locator('.galerie figure [data-g="supprimer"]').last.click(); p.wait_for_timeout(2400); p.click('.dialogue [data-r="oui"]'); p.wait_for_timeout(500)
+    assert len(photos()) == 3
+    # photo principale : refusée tant que la fiche a des modifications, puis échange
+    p.fill("#titre", "Girafe modifiée"); p.locator('.galerie figure [data-g="principale"]').first.click(); p.wait_for_timeout(300)
+    assert "Enregistrez d'abord la fiche" in p.locator("#galerie-message").inner_text()
+    js(p, "etat.modifie = false; vueFiche('o0')"); p.wait_for_timeout(700)
+    p.locator('.galerie figure [data-g="principale"]').first.click(); p.wait_for_timeout(900)
+    assert base(p, "oeuvres.find(o => o.id === 'o0').photo_path") == "p5"
+    assert photos()[0] == "p0", "l'ancienne photo principale devient une photo complémentaire"
+    assert p.locator(".bandeau").inner_text() == "Photo principale changée"
+    assert not deborde(p)
+
+
+def test_limite_de_photos(ouvrir):
+    p = ouvrir()
+    js(p, "vueFiche('o0')"); p.wait_for_timeout(700)
+    p.set_input_files("#photos-plus", [{"name": f"p{i}.png", "mimeType": "image/png", "buffer": PNG} for i in range(9)]); p.wait_for_timeout(2500)
+    assert p.locator(".galerie figure").count() == 8 and p.locator(".galerie-ajout").count() == 0
+    assert "3 non envoyées" in p.locator("#galerie-message").inner_text()

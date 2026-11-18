@@ -46,10 +46,11 @@ async function vueCorbeille(message = "", type = "info") {
       });
       if (!accord) return;
       b.disabled = true;
+      const autres = await cheminsComplementaires([o.id]); // relevées avant la suppression, qui efface leurs lignes en cascade
       const res = await sb.from("oeuvres").delete().eq("id", o.id).select("photo_path,vignette_path");
       if (res.error) throw res.error;
       if (!res.data.length) throw new Error("Suppression refusée : droits insuffisants.");
-      await effacerPhotos(res.data);
+      await effacerPhotos([...res.data, ...autres]);
       vueCorbeille(`« ${esc(o.titre)} » a été supprimée définitivement.`);
     } catch (err) { b.disabled = false; erreur(msgErreur(err)); }
   });
@@ -63,9 +64,10 @@ async function vueCorbeille(message = "", type = "info") {
     if (!accord) return;
     $("#vider").disabled = true;
     try {
+      const autres = await cheminsComplementaires(items.map((x) => x.id));
       const res = await sb.from("oeuvres").delete().not("supprime_le", "is", null).select("photo_path,vignette_path");
       if (res.error) throw res.error;
-      await effacerPhotos(res.data);
+      await effacerPhotos([...res.data, ...autres]);
       vueCorbeille(`Corbeille vidée : ${res.data.length} œuvre${res.data.length > 1 ? "s" : ""} supprimée${res.data.length > 1 ? "s" : ""} définitivement.`);
     } catch (err) { $("#vider").disabled = false; erreur(msgErreur(err)); }
   });

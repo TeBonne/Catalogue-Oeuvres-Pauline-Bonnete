@@ -68,6 +68,7 @@ async function vueFiche(id, origine) {
           o.poids_photo_octets != null ? `Photo en ligne : ${poids(o.poids_photo_octets)}` : "",
           o.fichier_origine ? `Fichier d'origine : ${esc(o.fichier_origine)}${o.poids_origine_octets != null ? ` (${poids(o.poids_origine_octets)})` : ""}` : ""
         ].filter(Boolean).join("<br>")}</p>` : ""}
+        ${id ? `<div id="galerie"></div>` : `<p class="aide">Une fois la fiche enregistrée, vous pourrez lui ajouter d'autres photos (détail, signature, dos…).</p>`}
       </div>
       <div class="carte">
         <p class="aide" style="margin:0">Les champs marqués ${req} sont obligatoires.</p>
@@ -168,6 +169,7 @@ async function vueFiche(id, origine) {
   const marquer = () => { etat.modifie = true; };
   $("#f").addEventListener("input", (e) => { marquer(); e.target.removeAttribute("aria-invalid"); });
   $("#f").addEventListener("change", marquer);
+  if (id) monterGalerie(o, () => vueFiche(id, origine));
   etat.gardien = async () => !etat.modifie || confirmer({
     titre: "Quitter sans enregistrer ?", corps: "Les modifications apportées à cette fiche seront perdues.",
     action: "Quitter sans enregistrer", annuler: "Continuer la saisie", delai: 0
