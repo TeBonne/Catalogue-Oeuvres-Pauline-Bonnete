@@ -88,9 +88,12 @@ async function vueFiche(id, origine) {
               <input id="date_vente" type="date" max="${aujourdhui()}" value="${esc(o.date_vente)}"></div>
           </div>
           <p class="aide">Le prix réellement encaissé peut différer du prix affiché. Ces deux informations alimentent le suivi des ventes.</p>
+          <div id="zone-port-facture">
           <label for="port_facture">Frais de port facturés (€)</label>
           <input id="port_facture" class="champ-court" inputmode="decimal" autocomplete="off" value="${esc(enSaisie(o.port_facture_eur))}" aria-describedby="port-aide">
-          <p class="aide" id="port-aide">Facturés à l'acheteur en plus du prix. Le montant reprend le tarif choisi dans « Frais de port », reste modifiable et ne changera plus si les tarifs évoluent. Laissez vide pour une remise en main propre.</p>
+          <p class="aide" id="port-aide">Facturés à l'acheteur en plus du prix. Le montant reprend le tarif choisi dans « Livraison », reste modifiable et ne changera plus si les tarifs évoluent.</p>
+          </div>
+          <p class="aide" id="main-propre-note" hidden>Remise en main propre : aucun frais de port n'est facturé pour cette vente.</p>
           ${etat.admin ? `
           <label for="acheteur">Acheteur</label>
           <select id="acheteur" aria-describedby="acheteur-aide">
@@ -134,12 +137,12 @@ async function vueFiche(id, origine) {
         <label for="prix">Prix (€)</label>
         <input id="prix" class="champ-court" inputmode="decimal" autocomplete="off" value="${esc(String(o.prix_eur ?? "").replace(".", ","))}">
         <label class="coche" for="prix_masque"><input id="prix_masque" type="checkbox" ${o.prix_masque ? "checked" : ""}> Ne pas afficher le prix sur le site web</label>
-        <label for="port_type">Frais de port</label>
+        <label for="port_type">Livraison</label>
         <select id="port_type" class="champ-court" aria-describedby="port-type-aide">
           <option value="">Non défini</option>
           ${etat.tarifs.map((t) => `<option value="${t.cle}" ${o.port_type === t.cle ? "selected" : ""}>${esc(t.libelle)}${t.montant_eur ? ` (${esc(euros(t.montant_eur))})` : ""}</option>`).join("")}
         </select>
-        <p class="aide" id="port-type-aide">Taille du colis à prévoir. ${etat.admin ? "Les tarifs se règlent dans Administration." : "Les tarifs sont réglés par l'administrateur."}</p>
+        <p class="aide" id="port-type-aide">Remise en main propre, ou taille du colis à expédier. ${etat.admin ? "Les tarifs se règlent dans Administration." : "Les tarifs sont réglés par l'administrateur."}</p>
 
         ${perso_html ? `<h2 class="section">Informations complémentaires</h2>${perso_html}` : ""}
 
@@ -189,7 +192,14 @@ async function vueFiche(id, origine) {
     $("#port_facture").value = t && t.montant_eur ? enSaisie(t.montant_eur) : "";
   }
   $("#port_facture").addEventListener("input", (e) => { portSaisi = texte(e.target.value) !== null; });
-  $("#port_type").addEventListener("change", proposerPort);
+  // Remise en main propre : pas de frais de port, le champ du montant disparaît
+  const majMainPropre = () => {
+    const mainPropre = $("#port_type").value === "main_propre";
+    $("#zone-port-facture").hidden = mainPropre; $("#main-propre-note").hidden = !mainPropre;
+    if (mainPropre) { $("#port_facture").value = ""; portSaisi = false; }
+  };
+  $("#port_type").addEventListener("change", () => { majMainPropre(); proposerPort(); });
+  majMainPropre();
   if ($("#acheteur")) $("#acheteur").addEventListener("change", (e) => { const neuf = e.target.value === "__nouveau"; $("#acheteur-nouveau").hidden = !neuf; if (neuf) $("#na-prenom").focus(); });
   $("#retour").addEventListener("click", quitter);
   $("#annuler").addEventListener("click", quitter);
@@ -259,8 +269,9 @@ async function vueFiche(id, origine) {
     if (vendu && texte($("#prix_vendu").value) && (pv === null || pv < 0)) return alerte("Le prix de vente doit être un nombre, par exemple 450.", "prix_vendu");
     if (vendu && ($("#date_vente").validity.badInput || dv === null)) return alerte("La date de la vente n'est pas valide. Format attendu : JJ/MM/AAAA.", "date_vente");
     if (vendu && dv && dv > aujourdhui()) return alerte("La date de la vente ne peut pas être dans le futur.", "date_vente");
-    const pf = vendu ? nombre($("#port_facture").value) : null;
-    if (vendu && texte($("#port_facture").value) && (pf === null || pf < 0)) return alerte("Les frais de port doivent être un nombre, par exemple 25.", "port_facture");
+    const mainPropre = $("#port_type").value === "main_propre";
+    const pf = vendu && !mainPropre ? nombre($("#port_facture").value) : null;
+    if (vendu && !mainPropre && texte($("#port_facture").value) && (pf === null || pf < 0)) return alerte("Les frais de port doivent être un nombre, par exemple 25.", "port_facture");
     let acheteurId = vendu ? (o.acheteur_id ?? null) : null, nouvelAcheteur = null;
     if (vendu && $("#acheteur")) {
       const choix = $("#acheteur").value;

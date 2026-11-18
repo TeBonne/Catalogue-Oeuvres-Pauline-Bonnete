@@ -26,7 +26,7 @@
         donnees: { artiste: "Pauline Bonneté", titre: "Portrait de Jeanne", annee: "2025", technique: "Pastel sur toile", dimensions: "35 cm × 45 cm", emplacement_signature: null, nature: "Original", texte: "Ce certificat garantit que cette œuvre est une création unique et originale." },
         photo_path: "certificats/k0/photo.jpg", acheteur_prenom: null, acheteur_nom: null, acheteur_email: null, annule_le: "2025-11-22T10:00:00Z", email_prepare_le: null }
     ],
-    tarifs_port: [{ cle: "petit", libelle: "Petit", montant_eur: 15, ordre: 1 }, { cle: "moyen", libelle: "Moyen", montant_eur: 28.5, ordre: 2 }, { cle: "gros", libelle: "Gros", montant_eur: 45, ordre: 3 }, { cle: "tres_gros", libelle: "Très gros", montant_eur: 0, ordre: 4 }],
+    tarifs_port: [{ cle: "petit", libelle: "Petit", montant_eur: 15, ordre: 1 }, { cle: "moyen", libelle: "Moyen", montant_eur: 28.5, ordre: 2 }, { cle: "gros", libelle: "Gros", montant_eur: 45, ordre: 3 }, { cle: "tres_gros", libelle: "Très gros", montant_eur: 0, ordre: 4 }, { cle: "main_propre", libelle: "Remise en main propre", montant_eur: 0, ordre: 5 }],
     photos_oeuvre: [{ id: "ph1", oeuvre_id: "o0", photo_path: "p5", vignette_path: "v5", poids_octets: 140000, cree_le: "2026-11-01T10:00:00Z" },
       { id: "ph2", oeuvre_id: "o0", photo_path: "p6", vignette_path: "v6", poids_octets: 150000, cree_le: "2026-11-02T10:00:00Z" }],
     acheteurs: [{ id: "a1", prenom: "Hélène", nom: "Martin", email: "helene.martin@exemple.fr", telephone: null, ville: "Vannes", notes: null },

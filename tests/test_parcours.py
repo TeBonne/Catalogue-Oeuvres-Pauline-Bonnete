@@ -71,7 +71,7 @@ def test_vente_et_frais_de_port(ouvrir):
     p = ouvrir()
     js(p, "vueFiche('o1')"); p.wait_for_timeout(500)
     assert p.locator("#bloc-vente").is_hidden()
-    assert [SANS_ESPACES(t) for t in p.locator("#port_type option").all_inner_texts()] == ["Non défini", "Petit (15 €)", "Moyen (28,50 €)", "Gros (45 €)", "Très gros"]
+    assert [SANS_ESPACES(t) for t in p.locator("#port_type option").all_inner_texts()] == ["Non défini", "Petit (15 €)", "Moyen (28,50 €)", "Gros (45 €)", "Très gros", "Remise en main propre"]
     p.select_option("#port_type", "moyen"); p.select_option("#statut", "vendu")
     assert p.locator("#bloc-vente").is_visible() and p.input_value("#port_facture") == "28,50"
     p.select_option("#port_type", "gros"); assert p.input_value("#port_facture") == "45"
@@ -85,6 +85,31 @@ def test_vente_et_frais_de_port(ouvrir):
     js(p, "vueFiche('o1')"); p.wait_for_timeout(500)
     p.select_option("#statut", "disponible"); p.click("#valider"); p.wait_for_timeout(600)
     assert [base(p, o + ".port_type"), base(p, o + ".port_facture_eur"), base(p, o + ".prix_vendu_eur")] == ["petit", None, None]
+
+
+def test_remise_en_main_propre(ouvrir):
+    p = ouvrir()
+    o = "oeuvres.find(o => o.id === 'o3')"                  # vendue 400 €, port facturé 28,50 €
+    js(p, "vueFiche('o3')"); p.wait_for_timeout(600)
+    assert p.locator("#port_facture").is_visible() and p.input_value("#port_facture") == "28,50"
+    p.select_option("#port_type", "main_propre")
+    assert p.locator("#port_facture").is_hidden() and p.locator("#main-propre-note").is_visible()
+    p.click("#valider"); p.wait_for_timeout(600)
+    assert [base(p, o + ".port_type"), base(p, o + ".port_facture_eur")] == ["main_propre", None]
+    # un retour à un tarif d'envoi repropose son montant
+    js(p, "vueFiche('o3')"); p.wait_for_timeout(600)
+    assert p.locator("#port_facture").is_hidden()
+    p.select_option("#port_type", "gros"); assert p.locator("#port_facture").is_visible() and p.input_value("#port_facture") == "45"
+    # suivi des ventes : mention dans la liste, filtre dédié, colonne de l'export
+    js(p, "etat.modifie = false; vueVentes()"); p.wait_for_timeout(900)
+    assert "Remise en main propre" in p.locator(".vente", has_text="Marée basse à Cancale").inner_text()
+    p.click("#v-filtres"); p.select_option("#vf-port", "main"); p.click("#v-panneau button[type=submit]"); p.wait_for_timeout(150)
+    assert p.locator(".vente .titre").all_inner_texts() == ["Marée basse à Cancale"] and p.locator(".actif").inner_text().strip() == "Remise en main propre"
+    with p.expect_download() as d: p.click("#v-export")
+    assert open(d.value.path(), "rb").read().decode("utf-8-sig").strip().split("\r\n")[1] == "02/06/2026;Marée basse à Cancale;Original;Peinture à l'huile;400;400;;Remise en main propre;400;Complète"
+    # administration : quatre tarifs modifiables, la remise en main propre n'en fait pas partie
+    js(p, "etat.adminOnglet = 'vente'; vueAdmin()"); p.wait_for_timeout(600)
+    assert p.locator('[data-quoi="libelle"]').count() == 4 and "main propre" in p.locator("#tarifs-port").inner_text()
 
 
 def test_selection_multiple(ouvrir):
@@ -158,7 +183,7 @@ def test_export_csv(ouvrir):
     assert brut[:3] == b"\xef\xbb\xbf", "BOM attendu pour Excel"
     lignes = brut.decode("utf-8-sig").strip().split("\r\n")
     assert lignes[0].startswith("Date de vente;Titre;Nature;Technique;") and len(lignes) == 9
-    assert lignes[1] == "30/10/2026;Titre 1;Original;Acrylique;700;700;28,5;728,5;Complète"
+    assert lignes[1] == "30/10/2026;Titre 1;Original;Acrylique;700;700;28,5;Envoi;728,5;Complète"
     assert "\"'=SOMME(A1);\"\"test\"\"\"" in brut.decode("utf-8"), "une formule dans un titre doit être neutralisée"
     assert re.fullmatch(r"ventes-pauline-bonnete-\d{4}-\d{2}-\d{2}\.csv", d.value.suggested_filename)
 

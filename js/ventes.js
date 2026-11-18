@@ -5,7 +5,7 @@
 async function chargerVentes() {
   const ventes = [];
   for (let debut = 0; ; debut += 1000) {
-    const { data, error } = await sb.from("oeuvres").select("id,titre,nature,technique,vignette_path,prix_eur,prix_vendu_eur,date_vente,port_facture_eur")
+    const { data, error } = await sb.from("oeuvres").select("id,titre,nature,technique,vignette_path,prix_eur,prix_vendu_eur,date_vente,port_facture_eur,port_type")
       .eq("statut", "vendu").is("supprime_le", null).order("id").range(debut, debut + 999);
     if (error) throw error;
     ventes.push(...data);
@@ -54,7 +54,7 @@ async function vueVentes() {
         <div class="sous">${v.nature ? `${esc(v.nature)}, ` : ""}${v.date_vente ? `<span class="long">${v.nature ? "vendue le " : "Vendue le "}</span>${esc(dateFr(v.date_vente))}` : `<span class="manque">Date à compléter</span>`}</div></div>
       <div class="droite"><div class="montant">${montant(v) != null ? esc(euros(montant(v))) : `<span class="manque">Prix à compléter</span>`}</div>
         <div class="sous">${v.prix_eur != null ? `Affiché ${esc(euros(Number(v.prix_eur)))}` : "Sans prix affiché"}${ecart ? `, soit ${ecart > 0 ? "+" : "−"}${esc(euros(Math.abs(ecart)))}` : ""}</div>
-        ${port(v) ? `<div class="sous port-ligne"><i></i>Port ${esc(euros(port(v)))}</div>` : ""}</div>
+        ${port(v) ? `<div class="sous port-ligne"><i></i>Port ${esc(euros(port(v)))}</div>` : v.port_type === "main_propre" ? `<div class="sous">Remise en main propre</div>` : ""}</div>
     </button>`;
   }
   // Liste des ventes : recherche, panneau de filtres, filtres actifs retirables un à un, tri
@@ -74,7 +74,7 @@ async function vueVentes() {
       if (f.min != null || f.max != null) l.push(["prix", `Prix ${f.min != null ? `de ${euros(f.min)} ` : ""}${f.max != null ? `${f.min != null ? "à" : "jusqu'à"} ${euros(f.max)}` : ""}`.trim()]);
       if (f.nature) l.push(["nature", `Nature : ${f.nature}`]);
       if (f.technique) l.push(["technique", `Technique : ${f.technique}`]);
-      if (f.port) l.push(["port", f.port === "avec" ? "Avec port facturé" : "Sans port facturé"]);
+      if (f.port) l.push(["port", { avec: "Avec port facturé", sans: "Sans port facturé", main: "Remise en main propre" }[f.port]]);
       if (f.etat) l.push(["etat", f.etat === "complete" ? "Fiches complètes" : "Fiches à compléter"]);
       return l;
     };
@@ -90,6 +90,7 @@ async function vueVentes() {
       if (f.technique && v.technique !== f.technique) return false;
       if (f.port === "avec" && !port(v)) return false;
       if (f.port === "sans" && port(v)) return false;
+      if (f.port === "main" && v.port_type !== "main_propre") return false;
       const complete = m != null && !!v.date_vente;
       if (f.etat === "complete" && !complete) return false;
       if (f.etat === "incomplete" && complete) return false;
@@ -109,12 +110,12 @@ async function vueVentes() {
     function exporter() {
       const nb = (x) => (x == null ? "" : String(Math.round(Number(x) * 100) / 100).replace(".", ","));
       const cellule = (x) => { let t = x == null ? "" : String(x); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return /[";\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }; // pas de formule exécutable à l'ouverture
-      const lignes = [["Date de vente", "Titre", "Nature", "Technique", "Prix affiché (€)", "Prix de vente (€)", "Frais de port facturés (€)", "Total encaissé (€)", "Fiche de vente"]];
+      const lignes = [["Date de vente", "Titre", "Nature", "Technique", "Prix affiché (€)", "Prix de vente (€)", "Frais de port facturés (€)", "Livraison", "Total encaissé (€)", "Fiche de vente"]];
       for (const v of affichees) {
         const m = montant(v);
-        lignes.push([v.date_vente ? dateFr(v.date_vente) : "", v.titre, v.nature, v.technique, nb(v.prix_eur), nb(m), port(v) ? nb(port(v)) : "", m == null ? "" : nb(m + port(v)), m != null && v.date_vente ? "Complète" : "À compléter"]);
+        lignes.push([v.date_vente ? dateFr(v.date_vente) : "", v.titre, v.nature, v.technique, nb(v.prix_eur), nb(m), port(v) ? nb(port(v)) : "", v.port_type === "main_propre" ? "Remise en main propre" : port(v) ? "Envoi" : "", m == null ? "" : nb(m + port(v)), m != null && v.date_vente ? "Complète" : "À compléter"]);
       }
-      const csv = "\ufeff" + lignes.map((l) => l.map((x, i) => (i >= 4 && i <= 7 ? x : cellule(x))).join(";")).join("\r\n") + "\r\n";
+      const csv = "\ufeff" + lignes.map((l) => l.map((x, i) => ((i >= 4 && i <= 6) || i === 8 ? x : cellule(x))).join(";")).join("\r\n") + "\r\n";
       const lien = document.createElement("a"), adresse = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
       lien.href = adresse; lien.download = `ventes-pauline-bonnete-${aujourdhui()}.csv`;
       document.body.append(lien); lien.click(); lien.remove();
@@ -236,7 +237,7 @@ async function vueVentes() {
             <div><label for="vf-max">à (€)</label><input id="vf-max" inputmode="decimal" autocomplete="off"></div>
             <div><label for="vf-nature">Nature</label><select id="vf-nature"><option value="">Toutes</option>${valeurs("nature").map((x) => `<option>${esc(x)}</option>`).join("")}</select></div>
             <div><label for="vf-technique">Technique</label><select id="vf-technique"><option value="">Toutes</option>${valeurs("technique").map((x) => `<option>${esc(x)}</option>`).join("")}</select></div>
-            <div><label for="vf-port">Frais de port</label><select id="vf-port"><option value="">Indifférent</option><option value="avec">Avec port</option><option value="sans">Sans port</option></select></div>
+            <div><label for="vf-port">Livraison</label><select id="vf-port"><option value="">Indifférent</option><option value="avec">Avec port</option><option value="sans">Sans port</option><option value="main">Main propre</option></select></div>
             <div><label for="vf-etat">Fiche de vente</label><select id="vf-etat"><option value="">Toutes</option><option value="complete">Complètes</option><option value="incomplete">À compléter</option></select></div>
           </div>
           <div id="vf-erreur" role="alert"></div>

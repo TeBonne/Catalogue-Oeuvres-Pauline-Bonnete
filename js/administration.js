@@ -51,10 +51,11 @@ async function vueAdmin(message = "", type = "info") {
         ${etat.tarifs.length ? `
         <div class="tarifs">
           <span class="lib" id="tp-col-lib">Libellé</span><span class="lib" id="tp-col-montant">Montant (€)</span>
-          ${etat.tarifs.map((t) => `
+          ${etat.tarifs.filter((t) => t.cle !== "main_propre").map((t) => `
             <input data-tarif="${t.cle}" data-quoi="libelle" value="${esc(t.libelle)}" maxlength="40" autocomplete="off" aria-labelledby="tp-col-lib">
             <input data-tarif="${t.cle}" data-quoi="montant" value="${esc(enSaisie(t.montant_eur))}" inputmode="decimal" autocomplete="off" aria-label="Montant en euros du tarif ${esc(t.libelle)}">`).join("")}
         </div>
+        <p class="aide">La remise en main propre est toujours proposée dans les fiches, sans frais.</p>
         <div id="tp-erreur" role="alert"></div>
         <button class="btn plein large" id="tp-enregistrer" style="margin-top:14px">Enregistrer les tarifs</button>` : `<div class="message erreur">Les tarifs n'ont pas pu être chargés.</div>`}
       </section>
@@ -104,7 +105,7 @@ async function vueAdmin(message = "", type = "info") {
     $("#tp-enregistrer").addEventListener("click", async () => {
       const refus = (m, el) => { $("#tp-erreur").innerHTML = `<div class="message erreur">${m}</div>`; el.focus(); };
       const maj = [];
-      for (const t of etat.tarifs) {
+      for (const t of etat.tarifs.filter((x) => x.cle !== "main_propre")) {
         const elL = zone.querySelector(`[data-tarif="${t.cle}"][data-quoi="libelle"]`), elM = zone.querySelector(`[data-tarif="${t.cle}"][data-quoi="montant"]`);
         const libelle = texte(elL.value), m = texte(elM.value) ? nombre(elM.value) : 0;
         if (!libelle) return refus("Chaque tarif doit avoir un libellé.", elL);
