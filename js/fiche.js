@@ -223,9 +223,7 @@ async function vueFiche(id, origine) {
     try {
       let source = fichier;
       if (!source) { const rep = await fetch(urlPhoto(o.photo_path)); if (!rep.ok) throw new Error("La photo enregistrée n'a pas pu être lue."); source = await rep.blob(); }
-      const { grand } = await preparerPhoto(new File([source], "accueil.jpg", { type: source.type || "image/jpeg" }));
-      const { error } = await sb.storage.from(BUCKET).upload(ACCUEIL_CHOISIE, grand, { contentType: "image/jpeg", cacheControl: "60", upsert: true });
-      if (error) throw error;
+      await copierVersAccueil(source);
       bandeau("Cette œuvre s'affichera sur l'écran de connexion d'ici quelques minutes.");
     } catch (err) { alerte(msgErreur(err)); }
     b.disabled = false;

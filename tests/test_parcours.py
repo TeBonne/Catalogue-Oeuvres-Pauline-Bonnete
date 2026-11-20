@@ -1,5 +1,11 @@
-import re
-from conftest import js, base, deborde
+import re, subprocess, sys
+from conftest import js, base, deborde, RACINE
+
+
+def test_estampilles_des_fichiers():
+    r = subprocess.run([sys.executable, str(RACINE / "outils" / "versionner.py"), "--verifier"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+
 
 SANS_ESPACES = lambda t: re.sub(r"[  ]", " ", t)
 
@@ -33,6 +39,16 @@ def test_lien_expire(ouvrir):
     p = ouvrir("#error=access_denied&error_code=otp_expired", 500)
     assert "Ce lien a expiré" in p.locator(".message.erreur").inner_text()
     assert p.evaluate("location.hash") == ""
+
+
+def test_image_de_l_ecran_de_connexion(ouvrir):
+    p = ouvrir()
+    assert p.evaluate("window.__listes") >= 1, "un administrateur vérifie à l'ouverture que l'image existe"
+    assert not p.evaluate("(window.__envois || []).includes('accueil/fond.jpg')"), "image présente : rien n'est envoyé"
+    js(p, "window.__accueil_absente = true; window.__db.oeuvres[0].id = ACCUEIL_OEUVRE_INITIALE; assurerImageAccueil()"); p.wait_for_timeout(1200)
+    assert p.evaluate("window.__envois.includes('accueil/fond.jpg')"), "image absente : elle est recréée à partir de l'œuvre initiale"
+    q = ouvrir("#connexion")
+    assert q.locator("#accueil.avec-oeuvre").count() == 1, "l'image choisie s'affiche en fond de l'écran de connexion"
 
 
 # ---------- Catalogue ----------

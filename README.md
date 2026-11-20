@@ -43,6 +43,8 @@ Règles à connaître avant de modifier :
   définie dans un fichier est utilisable dans les autres. L'ordre des balises `<script>` de `index.html` compte ;
   `demarrage.js` reste en dernier.
 - **Une vue = une fonction `vue…()`** (`vueListe`, `vueFiche`, `vueVentes`…) qui réécrit le contenu de `#app`.
+- **Avant chaque commit : `python outils/versionner.py`.** Il estampille les adresses des scripts et des styles dans
+  `index.html` ; sans cela, un navigateur peut garder un ancien fichier quelques minutes. Les tests échouent si c'est oublié.
 - **Les trois feuilles de style se surchargent dans l'ordre 1 → 2 → 3.** Une règle nouvelle va dans la feuille 3,
   dans la section de son écran. Les feuilles 1 et 2 gardent l'ordre historique ; les regrouper par écran reste à faire.
 - **Les droits sont appliqués par la base** (règles d'accès Supabase), pas par l'interface : masquer un bouton ne

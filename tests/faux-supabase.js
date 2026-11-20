@@ -97,7 +97,8 @@
         acheteur_email: a.p_email || null, statut: "valide", annule_le: null, email_prepare_le: null };
       db.certificats.push(c); return { data: JSON.parse(JSON.stringify(c)), error: null };
     },
-    storage: { from: () => ({ getPublicUrl: (p) => ({ data: { publicUrl: img(parseInt(p.slice(1)) || 0, p[0] === "p" ? 800 : [480, 300, 480, 360][(parseInt(p.slice(1)) || 0) % 4], p[0] === "p" ? 1000 : [480, 480, 280, 480][(parseInt(p.slice(1)) || 0) % 4]) } }), upload: async (chemin, blob) => { depots.set(chemin, blob); return { error: null }; }, remove: async () => ({}),
+    storage: { from: () => ({ getPublicUrl: (p) => ({ data: { publicUrl: img(parseInt(p.slice(1)) || 0, p[0] === "p" ? 800 : [480, 300, 480, 360][(parseInt(p.slice(1)) || 0) % 4], p[0] === "p" ? 1000 : [480, 480, 280, 480][(parseInt(p.slice(1)) || 0) % 4]) } }), upload: async (chemin, blob) => { depots.set(chemin, blob); (window.__envois = window.__envois || []).push(chemin); return { error: null }; }, remove: async () => ({}),
+      list: async () => { window.__listes = (window.__listes || 0) + 1; return { data: window.__accueil_absente ? [] : [{ name: "fond.jpg" }], error: null }; },
       download: async (chemin) => {
         const c = document.createElement("canvas"), x = c.getContext("2d");
         if (chemin.startsWith("signature/")) { // une signature tracée à l'encre, sur fond transparent

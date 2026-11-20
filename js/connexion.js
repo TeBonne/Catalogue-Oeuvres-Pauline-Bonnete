@@ -2,24 +2,32 @@
 /* Connexion : écran d'accueil, mot de passe oublié, ouverture de session. */
 
 /* ---------- Œuvre affichée sur l'écran de connexion ---------- */
-/* Image choisie par un administrateur (copie publique à chemin fixe) ; à défaut, une œuvre du catalogue rognée à l'affichage. */
+/* L'image est une copie publique à chemin fixe, choisie par un administrateur depuis une fiche (« Afficher sur l'écran de connexion »).
+   C'est une copie : remplacer, recadrer ou supprimer la photo d'origine ne la fait pas disparaître. Sans image, le fond reste uni. */
 const ACCUEIL_CHOISIE = "accueil/fond.jpg";
-const ACCUEIL_DEFAUT = { // photo d'origine : capture d'écran dont seule la peinture est montrée (zone en pixels de l'image)
-  chemin: "f8f56689-d5f0-40b2-a792-5542aae78b1d/photo-1794934478620.jpg", largeur: 738, x: 128, y: 402, l: 514, h: 753
-};
+const ACCUEIL_OEUVRE_INITIALE = "f8f56689-d5f0-40b2-a792-5542aae78b1d"; // œuvre retenue au départ pour cet écran
 function monterAccueil() {
   const fond = $("#accueil-fond"); if (!fond) return;
-  const poser = (adresse, rogne) => { // l'œuvre occupe tout le fond de l'écran
-    if (!fond.isConnected) return;
-    if (rogne) {
-      const style = `width:${(rogne.largeur / rogne.l) * 100}%;left:${(-rogne.x / rogne.l) * 100}%;top:${(-rogne.y / rogne.h) * 100}%`;
-      fond.innerHTML = `<div class="rogne" style="aspect-ratio:${rogne.l}/${rogne.h};width:max(100vw, calc(100vh * ${rogne.l / rogne.h}))"><img alt="" src="${esc(adresse)}" style="${style}"></div>`;
-    } else fond.style.backgroundImage = `url("${adresse}")`;
-    fond.classList.add("pret"); $("#accueil").classList.add("avec-oeuvre");
-  };
-  const essayer = (adresse, alors, sinon) => { const i = new Image(); i.onload = alors; i.onerror = sinon; i.src = adresse; };
-  const choisie = urlPhoto(ACCUEIL_CHOISIE) + "?v=" + Math.floor(Date.now() / 600000), defaut = urlPhoto(ACCUEIL_DEFAUT.chemin);
-  essayer(choisie, () => poser(choisie, null), () => essayer(defaut, () => poser(defaut, ACCUEIL_DEFAUT), () => {}));
+  const brute = urlPhoto(ACCUEIL_CHOISIE), image = new Image();
+  const adresse = brute.startsWith("http") ? brute + "?v=" + Math.floor(Date.now() / 600000) : brute; // rafraîchie toutes les dix minutes
+  image.onload = () => { if (!fond.isConnected) return; fond.style.backgroundImage = `url("${adresse}")`; fond.classList.add("pret"); $("#accueil").classList.add("avec-oeuvre"); };
+  image.src = adresse;
+}
+async function copierVersAccueil(source) {
+  const { grand } = await preparerPhoto(new File([source], "accueil.jpg", { type: source.type || "image/jpeg" }));
+  const { error } = await sb.storage.from(BUCKET).upload(ACCUEIL_CHOISIE, grand, { contentType: "image/jpeg", cacheControl: "60", upsert: true });
+  if (error) throw error;
+}
+// Réparation silencieuse : si aucune image n'a encore été choisie, un administrateur connecté dépose celle de l'œuvre initiale
+async function assurerImageAccueil() {
+  try {
+    const { data: fichiers, error } = await sb.storage.from(BUCKET).list("accueil", { limit: 10 });
+    if (error || fichiers.some((f) => f.name === "fond.jpg")) return;
+    const { data } = await sb.from("oeuvres").select("photo_path").eq("id", ACCUEIL_OEUVRE_INITIALE).is("supprime_le", null).not("photo_path", "is", null).limit(1);
+    if (!data || !data.length) return;
+    const rep = await fetch(urlPhoto(data[0].photo_path)); if (!rep.ok) return;
+    await copierVersAccueil(await rep.blob());
+  } catch (_) { /* sans gravité : l'écran de connexion garde un fond uni */ }
 }
 
 /* ---------- Connexion ---------- */
@@ -165,6 +173,7 @@ async function demarrer(session) {
   etat.admin = !!data[0].admin; etat.email = data[0].email; etat.tutorielVu = data[0].tutoriel_vu !== false;
   try { await chargerChamps(); } catch (_) { etat.champs = []; }
   try { await chargerTarifs(); } catch (_) { etat.tarifs = []; }
+  if (etat.admin) assurerImageAccueil();
   vueListe();
   if (!etat.tutorielVu) setTimeout(() => { if (etat.utilisateur && !etat.tutorielVu) lancerTutoriel(); }, 1200); // première connexion
 }
