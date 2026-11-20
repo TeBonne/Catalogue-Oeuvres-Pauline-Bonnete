@@ -29,7 +29,7 @@ function vueConnexion(message = "", type = "erreur") {
     <div class="accueil" id="accueil">
     <div class="accueil-fond" id="accueil-fond" aria-hidden="true"></div>
     <div class="carte accueil-carte">
-      <h1 style="font-size:1.9rem">Pauline Bonneté</h1>
+      <h1 style="font-size:2.5rem">Pauline Bonneté</h1>
       <p class="sous" style="margin-top:6px">Ma vie, mes œuvres</p>
       ${message ? `<div class="message ${type}">${message}</div>` : ""}
       <form id="f">

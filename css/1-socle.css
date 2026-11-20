@@ -1,14 +1,16 @@
 /* Socle : variables, typographie, mise en page et composants de base.
    Chargé en premier ; les deux feuilles suivantes le complètent et le surchargent, dans cet ordre. */
-@font-face { font-family: "Bricolage Grotesque"; src: url("../polices/bricolage-grotesque.woff2") format("woff2-variations"); font-weight: 200 800; font-display: swap; }
-@font-face { font-family: "Instrument Sans"; src: url("../polices/instrument-sans.woff2") format("woff2-variations"); font-weight: 400 700; font-display: swap; }
+/* Polices libres (SIL Open Font License 1.1), hébergées avec le site : Cormorant pour les titres, Montserrat pour le texte */
+@font-face { font-family: "Cormorant"; src: url("../polices/cormorant.woff2") format("woff2-variations"), url("../polices/cormorant.woff2") format("woff2"); font-weight: 300 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Cormorant"; src: url("../polices/cormorant-italique.woff2") format("woff2-variations"), url("../polices/cormorant-italique.woff2") format("woff2"); font-weight: 300 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Montserrat"; src: url("../polices/montserrat.woff2") format("woff2-variations"), url("../polices/montserrat.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
 :root {
   /* Mur de galerie : blanc de cimaise, encre, gris de Payne, outremer pour agir, vermillon pour « vendu » */
   --fond: #f2f3f0; --carte: #ffffff; --encre: #171c26; --doux: #5b6472;
   --trait: #e1e3de; --accent: #3247d6; --accent-fonce: #2434a8; --accent-pale: #e9ecfc; --alerte: #c2301c; --vermillon: #d4351c; --port: #d98a00;
   --rayon: 16px; --ressort: cubic-bezier(.2, .8, .2, 1);
-  --titre: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
-  --texte: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --titre: "Cormorant", "EB Garamond", Georgia, "Times New Roman", serif;
+  --texte: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   interpolate-size: allow-keywords;
 }
 * { box-sizing: border-box; }

@@ -140,7 +140,7 @@ details.champ[open] > summary { padding-bottom: 12px; border-bottom: 1px solid v
 .manque { color: #8a5200; font-weight: 600; }
 .vente .droite .sous, .vente .corps .sous { font-size: .82rem; }
 @media (max-width: 600px) { .tuiles { grid-template-columns: 1fr 1fr; } .tuile:first-child { grid-column: 1 / -1; } .vente .long { display: none; } .vente { padding: 10px 8px; gap: 10px; } }
-@media (max-width: 600px) { .graphe .long { display: none; } .graphe .court { display: inline; } .entete h1 { font-size: 1.22rem; } }
+@media (max-width: 600px) { .graphe .long { display: none; } .graphe .court { display: inline; } .entete h1 { font-size: 1.65rem; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 @media (min-width: 900px) {
   .page { max-width: 1100px; padding: 24px 32px; }
