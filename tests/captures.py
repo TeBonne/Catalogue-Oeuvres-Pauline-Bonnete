@@ -35,7 +35,9 @@ def main():
                 page.goto("about:blank")
             page.goto(site); page.wait_for_timeout(900)
             for vue, code in vues:
-                if code: page.evaluate("(() => { " + code + "; return 1; })()")
+                if code:
+                    try: page.evaluate("(() => { " + code + "; return 1; })()")
+                    except Exception as e: print(nom, vue, "ÉCHEC :", str(e).split("\n")[0][:120])
                 page.wait_for_timeout(900)
                 page.screenshot(path=str(sortie / f"{nom}-{vue}.png"), full_page=True)
             if erreurs: print(nom, "ERREURS JS :", erreurs[:5])

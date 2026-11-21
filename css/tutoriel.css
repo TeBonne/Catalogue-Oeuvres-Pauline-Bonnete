@@ -1,0 +1,26 @@
+/* Tutoriel de prise en main. */
+/* Tutoriel de prise en main */
+.tuto-fond { position: fixed; inset: 0; z-index: 50; }
+.tuto-halo {
+  position: fixed; z-index: 51; pointer-events: none; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(16,19,26,.66), 0 0 0 2px #fff;
+  transition: left .35s var(--ressort), top .35s var(--ressort), width .35s var(--ressort), height .35s var(--ressort);
+}
+.tuto-halo.sans-cible { left: 50% !important; top: 50% !important; width: 0 !important; height: 0 !important; box-shadow: 0 0 0 9999px rgba(16,19,26,.66); }
+.tuto-carte {
+  position: fixed; z-index: 52; width: min(380px, calc(100vw - 32px)); padding: 18px 20px 16px; background: #fff; border-radius: 18px;
+  box-shadow: 0 30px 60px -20px rgba(10,14,24,.6); animation: monte .3s var(--ressort) both;
+}
+.tuto-carte[data-pos="centre"] { left: 50%; top: 50%; transform: translate(-50%, -50%); animation: none; }
+.tuto-carte[data-pos="bas"] { left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); width: auto; }
+.tuto-carte[data-pos="haut"] { left: 16px; right: 16px; top: calc(16px + env(safe-area-inset-top)); width: auto; }
+.tuto-avancement { display: flex; gap: 4px; margin-bottom: 12px; }
+.tuto-avancement span { flex: 1; height: 4px; border-radius: 2px; background: #e2e4df; transition: background-color .3s; }
+.tuto-avancement span.fait { background: #a9b3ee; }
+.tuto-avancement span.actif { background: var(--accent); }
+.tuto-etape { font-size: .8rem; color: var(--doux); font-variant-numeric: tabular-nums; }
+.tuto-carte h2 { margin: 2px 0 6px; font-size: 1.2rem; }
+.tuto-carte p { margin: 0 0 16px; color: #3c424e; }
+.tuto-actions { display: flex; align-items: center; gap: 8px; }
+.tuto-actions .btn { min-height: 42px; padding: 0 16px; white-space: nowrap; }
+.tuto-actions .btn.discret { margin-left: -12px; padding: 0 12px; }
+body.tuto-ouvert { overflow: hidden; }

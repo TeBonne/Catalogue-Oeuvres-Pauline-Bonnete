@@ -11,10 +11,18 @@ Prototype : application web statique (sans étape de compilation), hébergée su
 ```
 index.html            Page unique : charge les feuilles de style puis les scripts, dans l'ordre
 verification.html     Page publique de vérification d'un certificat (autonome)
-css/
-  1-socle.css         Variables, typographie, mise en page, composants de base
-  2-composants.css    Composants et écrans (ventes, sélection, administration…)
-  3-theme.css         Direction artistique, animations, écrans récents
+css/                  Une feuille par écran ou par famille de composants, chargées dans cet ordre :
+  socle.css           Variables, polices, éléments de base, mise en page générale, animations
+  formulaires.css     Libellés, champs, cases à cocher, états d'erreur
+  composants.css      Boutons, cartes, messages, fenêtres de confirmation, pastilles, onglets
+  navigation.css      Barre latérale (écran large), menu coulissant (téléphone)
+  connexion.css       Écran de connexion
+  catalogue.css       Vignettes, liste, outils, sélection multiple, corbeille
+  fiche.css           Fiche d'une œuvre, photos complémentaires, éditeur de recadrage
+  ventes.css          Suivi des ventes, fichier des acheteurs
+  certificats.css     Certificats d'authenticité
+  administration.css  Sous-rubriques, tarifs de frais de port
+  tutoriel.css        Tutoriel de prise en main
 js/
   config.js           Accès Supabase, constantes, état global (`etat`)
   outils.js           Formats, dates, photos, fenêtres de confirmation, bandeaux
@@ -45,8 +53,10 @@ Règles à connaître avant de modifier :
 - **Une vue = une fonction `vue…()`** (`vueListe`, `vueFiche`, `vueVentes`…) qui réécrit le contenu de `#app`.
 - **Avant chaque commit : `python outils/versionner.py`.** Il estampille les adresses des scripts et des styles dans
   `index.html` ; sans cela, un navigateur peut garder un ancien fichier quelques minutes. Les tests échouent si c'est oublié.
-- **Les trois feuilles de style se surchargent dans l'ordre 1 → 2 → 3.** Une règle nouvelle va dans la feuille 3,
-  dans la section de son écran. Les feuilles 1 et 2 gardent l'ordre historique ; les regrouper par écran reste à faire.
+- **Une règle de style va dans la feuille de son écran**, à la fin. À l'intérieur d'une feuille, l'ordre compte :
+  une règle placée plus bas l'emporte sur une règle équivalente placée plus haut.
+- **Les grandes vues se lisent de haut en bas** : chargement, affichage (`gabarit()`), puis un bloc nommé par sujet
+  (`brancherVente()`, `brancherPhoto()`…). Ces blocs partagent les variables déclarées en tête de la vue.
 - **Les droits sont appliqués par la base** (règles d'accès Supabase), pas par l'interface : masquer un bouton ne
   protège rien.
 

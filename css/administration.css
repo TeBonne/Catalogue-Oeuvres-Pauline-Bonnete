@@ -1,0 +1,6 @@
+/* Administration : sous-rubriques, tarifs de frais de port. */
+.tarifs { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px 10px; align-items: center; margin-top: 12px; }
+.tarifs .lib { font-size: .85rem; font-weight: 600; }
+.tarifs input { margin: 0; }
+.adm-panneau { animation: voile .18s ease both; }
+.adm-intro { margin: 0 0 14px; }
