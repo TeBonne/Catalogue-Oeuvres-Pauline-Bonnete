@@ -43,7 +43,6 @@ async function vueVentes() {
   const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? "s" : ""}`;
   const plafond = (v) => { if (v <= 0) return 100; const p = 10 ** Math.floor(Math.log10(v)); return [1, 2, 2.5, 5, 10].map((k) => k * p).find((x) => x >= v); };
 
-  const sansAccent = (t) => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const valeurs = (col) => [...new Set(ventes.map((v) => v[col]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
   const VIDE = () => ({ q: "", du: "", au: "", min: null, max: null, nature: "", technique: "", port: "", etat: "" });
   function ligneVente(v) {
@@ -172,7 +171,8 @@ async function vueVentes() {
     remplir(); maj();
   }
 
-  function dessiner(anime = true) {
+  // Périodes du graphique (mois de l'année choisie, ou années), avec leurs totaux
+  function periodesDuGraphe() {
     const parMois = cfg.grain === "mois";
     const series = parMois
       ? MOIS.map((m, i) => ({ cle: `${cfg.annee}-${String(i + 1).padStart(2, "0")}`, long: m, court: m[0].toUpperCase(), nom: `${MOIS_LONGS[i]} ${cfg.annee}` }))
@@ -180,6 +180,37 @@ async function vueVentes() {
           .map((a) => ({ cle: String(a), long: String(a), court: String(a).slice(2), nom: `Année ${a}` }));
     series.forEach((s) => { const l = completes.filter((v) => v.date_vente.startsWith(s.cle)); s.total = somme(l); s.port = sommePort(l); s.n = l.length; });
     if (cfg.periode && !series.some((s) => s.cle === cfg.periode)) cfg.periode = null;
+    return { parMois, series };
+  }
+
+  // Graphique : changement de période, infobulle, clic sur une barre
+  function brancherGraphe(series) {
+    $("#grain").addEventListener("click", (e) => { const b = e.target.closest("[data-grain]"); if (!b || b.dataset.grain === cfg.grain) return; cfg.grain = b.dataset.grain; cfg.periode = null; dessiner(); });
+    if ($("#annee")) $("#annee").addEventListener("change", (e) => { cfg.annee = +e.target.value; cfg.periode = null; dessiner(); });
+    const graphe = $("#graphe"); if (!graphe) return;
+    const bulle = $("#infobulle"), zone = graphe.querySelector(".zone");
+    const montrer = (col) => {
+      const s = series[+col.dataset.i];
+      bulle.textContent = "";
+      const fort = document.createElement("strong"); fort.textContent = euros(s.total + s.port);
+      bulle.append(fort, document.createTextNode(`${s.nom}, ${pluriel(s.n, "vente")}`));
+      if (s.port) { const detail = document.createElement("span"); detail.className = "detail"; detail.textContent = `Tableaux ${euros(s.total)}, port ${euros(s.port)}`; bulle.append(detail); }
+      bulle.hidden = false;
+      const z = zone.getBoundingClientRect(), c = col.getBoundingClientRect(), demi = bulle.offsetWidth / 2;
+      bulle.style.left = Math.min(z.width - demi, Math.max(demi, c.left - z.left + c.width / 2)) + "px";
+      bulle.style.top = Math.max(bulle.offsetHeight, col.querySelector(".barre").getBoundingClientRect().top - z.top - 6) + "px";
+    };
+    zone.querySelectorAll(".col").forEach((col) => {
+      col.addEventListener("pointerenter", () => montrer(col));
+      col.addEventListener("focus", () => montrer(col));
+      col.addEventListener("pointerleave", () => { bulle.hidden = true; });
+      col.addEventListener("blur", () => { bulle.hidden = true; });
+      col.addEventListener("click", () => { const s = series[+col.dataset.i]; cfg.periode = cfg.periode === s.cle ? null : s.cle; dessiner(false); });
+    });
+  }
+
+  function dessiner(anime = true) {
+    const { parMois, series } = periodesDuGraphe();
     const haut = plafond(Math.max(...series.map((s) => s.total + s.port)));
     const duGraphe = parMois ? completes.filter((v) => v.date_vente.startsWith(String(cfg.annee))) : completes;
 
@@ -254,29 +285,8 @@ async function vueVentes() {
     $("#retour").addEventListener("click", vueListe);
     if (!ventes.length) return;
     monterListe(series);
-    $("#grain").addEventListener("click", (e) => { const b = e.target.closest("[data-grain]"); if (!b || b.dataset.grain === cfg.grain) return; cfg.grain = b.dataset.grain; cfg.periode = null; dessiner(); });
-    if ($("#annee")) $("#annee").addEventListener("change", (e) => { cfg.annee = +e.target.value; cfg.periode = null; dessiner(); });
     $("#liste-ventes").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) vueFiche(b.dataset.id, "ventes"); });
-    const graphe = $("#graphe"); if (!graphe) return;
-    const bulle = $("#infobulle"), zone = graphe.querySelector(".zone");
-    const montrer = (col) => {
-      const s = series[+col.dataset.i];
-      bulle.textContent = "";
-      const fort = document.createElement("strong"); fort.textContent = euros(s.total + s.port);
-      bulle.append(fort, document.createTextNode(`${s.nom}, ${pluriel(s.n, "vente")}`));
-      if (s.port) { const detail = document.createElement("span"); detail.className = "detail"; detail.textContent = `Tableaux ${euros(s.total)}, port ${euros(s.port)}`; bulle.append(detail); }
-      bulle.hidden = false;
-      const z = zone.getBoundingClientRect(), c = col.getBoundingClientRect(), demi = bulle.offsetWidth / 2;
-      bulle.style.left = Math.min(z.width - demi, Math.max(demi, c.left - z.left + c.width / 2)) + "px";
-      bulle.style.top = Math.max(bulle.offsetHeight, col.querySelector(".barre").getBoundingClientRect().top - z.top - 6) + "px";
-    };
-    zone.querySelectorAll(".col").forEach((col) => {
-      col.addEventListener("pointerenter", () => montrer(col));
-      col.addEventListener("focus", () => montrer(col));
-      col.addEventListener("pointerleave", () => { bulle.hidden = true; });
-      col.addEventListener("blur", () => { bulle.hidden = true; });
-      col.addEventListener("click", () => { const s = series[+col.dataset.i]; cfg.periode = cfg.periode === s.cle ? null : s.cle; dessiner(false); });
-    });
+    brancherGraphe(series);
   }
   dessiner();
 }

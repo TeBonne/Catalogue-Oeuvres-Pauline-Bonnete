@@ -2,6 +2,7 @@
 /* Administration : champs des fiches, listes de choix, tarifs de frais de port. */
 
 /* ---------- Espace administrateur ---------- */
+/* Lecture de haut en bas : chargement, affichage, puis un bloc nommé par sous-rubrique. */
 async function vueAdmin(message = "", type = "info") {
   if (!etat.admin) return vueListe();
   majLateral("admin");
@@ -9,22 +10,34 @@ async function vueAdmin(message = "", type = "info") {
   app.innerHTML = `<p class="sous">Chargement…</p>`;
   try { await chargerChamps(); await chargerTarifs(); } catch (e) { message = msgErreur(e); type = "erreur"; }
   const { count: enCorbeille } = await sb.from("oeuvres").select("id", { count: "exact", head: true }).not("supprime_le", "is", null);
-  const carte = (c) => `
-    <details class="carte bloc champ" data-champ="${c.id}" ${etat.adminOuvert === c.id ? "open" : ""}>
-      <summary><span class="nom">${esc(c.libelle)}</span><span class="sous">${TYPES[c.type]}${c.type === "liste" ? `, ${c.options.length} choix` : ""}</span></summary>
-      <label for="lib-${c.id}">Libellé du champ</label>
-      <div class="rang"><input id="lib-${c.id}" value="${esc(c.libelle)}" autocomplete="off"><button class="btn" data-action="libelle">Enregistrer</button></div>
-      ${c.type === "liste" ? `
-        <label>Choix proposés</label>
-        ${c.options.map((v, i) => `
-          <div class="rang option"><input data-option="${i}" data-initial="${esc(v)}" value="${esc(v)}" aria-label="Choix ${i + 1}" autocomplete="off">
-          <button class="btn icone-carree" data-action="renommer" data-i="${i}" aria-label="Enregistrer le nouveau nom" title="Enregistrer le nouveau nom" disabled>${ICONES.valider}</button>
-          <button class="btn danger icone-carree" data-action="retirer" data-i="${i}" aria-label="Retirer le choix ${esc(v)}" title="Retirer ce choix">${ICONES.corbeille}</button></div>`).join("") || `<p class="sous">Aucun choix pour l'instant.</p>`}
-        <p class="aide">Modifiez un nom puis validez avec la coche : les œuvres concernées sont mises à jour.</p>
-        <div class="rang"><input data-nouveau placeholder="Nouveau choix" aria-label="Nouveau choix" autocomplete="off"><button class="btn" data-action="ajouter">Ajouter</button></div>` : ""}
-      ${c.systeme ? "" : `<div class="zone-danger"><button class="btn danger" data-action="supprimer">Supprimer ce champ</button></div>`}
-    </details>`;
-  app.innerHTML = `
+
+  const erreur = (m) => { $("#alerte").innerHTML = `<div class="message erreur">${m}</div>`; window.scrollTo(0, 0); };
+  const verifier = (res) => { if (res.error) throw res.error; if (res.data && !res.data.length) throw new Error("Modification refusée : droits insuffisants."); };
+
+  app.innerHTML = gabarit();
+  brancherRubriques();
+  monterReglagesCertificats();
+  if ($("#tp-enregistrer")) brancherTarifs();
+  brancherChamps();
+
+  // ----- Gabarit de la page -----
+  function gabarit() {
+    const carte = (c) => `
+      <details class="carte bloc champ" data-champ="${c.id}" ${etat.adminOuvert === c.id ? "open" : ""}>
+        <summary><span class="nom">${esc(c.libelle)}</span><span class="sous">${TYPES[c.type]}${c.type === "liste" ? `, ${c.options.length} choix` : ""}</span></summary>
+        <label for="lib-${c.id}">Libellé du champ</label>
+        <div class="rang"><input id="lib-${c.id}" value="${esc(c.libelle)}" autocomplete="off"><button class="btn" data-action="libelle">Enregistrer</button></div>
+        ${c.type === "liste" ? `
+          <label>Choix proposés</label>
+          ${c.options.map((v, i) => `
+            <div class="rang option"><input data-option="${i}" data-initial="${esc(v)}" value="${esc(v)}" aria-label="Choix ${i + 1}" autocomplete="off">
+            <button class="btn icone-carree" data-action="renommer" data-i="${i}" aria-label="Enregistrer le nouveau nom" title="Enregistrer le nouveau nom" disabled>${ICONES.valider}</button>
+            <button class="btn danger icone-carree" data-action="retirer" data-i="${i}" aria-label="Retirer le choix ${esc(v)}" title="Retirer ce choix">${ICONES.corbeille}</button></div>`).join("") || `<p class="sous">Aucun choix pour l'instant.</p>`}
+          <p class="aide">Modifiez un nom puis validez avec la coche : les œuvres concernées sont mises à jour.</p>
+          <div class="rang"><input data-nouveau placeholder="Nouveau choix" aria-label="Nouveau choix" autocomplete="off"><button class="btn" data-action="ajouter">Ajouter</button></div>` : ""}
+        ${c.systeme ? "" : `<div class="zone-danger"><button class="btn danger" data-action="supprimer">Supprimer ce champ</button></div>`}
+      </details>`;
+    return `
     <div id="adm" class="etroit">
       ${entete("Administration")}
       <div id="alerte">${message ? `<div class="message ${type}">${message}</div>` : ""}</div>
@@ -79,27 +92,30 @@ async function vueAdmin(message = "", type = "info") {
       </section>
       </div>
     </div>`;
-  $("#retour").addEventListener("click", vueListe);
-  $("#corbeille").addEventListener("click", () => vueCorbeille());
-  $("#revoir-tuto").addEventListener("click", () => lancerTutoriel());
-  // Sous-rubriques : une seule est affichée ; la rubrique choisie est conservée d'un affichage à l'autre
-  const choisirOnglet = (cle, focus) => {
-    etat.adminOnglet = cle;
-    $("#adm-onglets").querySelectorAll("[role=tab]").forEach((b) => { const actif = b.dataset.onglet === cle; b.setAttribute("aria-selected", String(actif)); b.tabIndex = actif ? 0 : -1; if (actif && focus) b.focus(); });
-    document.querySelectorAll(".adm-panneau").forEach((x) => { x.hidden = x.id !== "adm-" + cle; });
-    $("#alerte").innerHTML = "";
-  };
-  $("#adm-onglets").addEventListener("click", (e) => { const b = e.target.closest("[data-onglet]"); if (b) choisirOnglet(b.dataset.onglet); });
-  $("#adm-onglets").addEventListener("keydown", (e) => {
-    const tous = [...$("#adm-onglets").querySelectorAll("[role=tab]")], i = tous.findIndex((b) => b.dataset.onglet === etat.adminOnglet);
-    const cible = e.key === "ArrowRight" ? tous[(i + 1) % tous.length] : e.key === "ArrowLeft" ? tous[(i - 1 + tous.length) % tous.length] : e.key === "Home" ? tous[0] : e.key === "End" ? tous[tous.length - 1] : null;
-    if (cible) { e.preventDefault(); choisirOnglet(cible.dataset.onglet, true); }
-  });
-  monterReglagesCertificats();
-  const erreur = (m) => { $("#alerte").innerHTML = `<div class="message erreur">${m}</div>`; window.scrollTo(0, 0); };
-  const verifier = (res) => { if (res.error) throw res.error; if (res.data && !res.data.length) throw new Error("Modification refusée : droits insuffisants."); };
+  }
 
-  if ($("#tp-enregistrer")) {
+  // ----- Navigation : retour, sous-rubriques en onglets, corbeille, tutoriel -----
+  function brancherRubriques() {
+    $("#retour").addEventListener("click", vueListe);
+    $("#corbeille").addEventListener("click", () => vueCorbeille());
+    $("#revoir-tuto").addEventListener("click", () => lancerTutoriel());
+    // Sous-rubriques : une seule est affichée ; la rubrique choisie est conservée d'un affichage à l'autre
+    const choisirOnglet = (cle, focus) => {
+      etat.adminOnglet = cle;
+      $("#adm-onglets").querySelectorAll("[role=tab]").forEach((b) => { const actif = b.dataset.onglet === cle; b.setAttribute("aria-selected", String(actif)); b.tabIndex = actif ? 0 : -1; if (actif && focus) b.focus(); });
+      document.querySelectorAll(".adm-panneau").forEach((x) => { x.hidden = x.id !== "adm-" + cle; });
+      $("#alerte").innerHTML = "";
+    };
+    $("#adm-onglets").addEventListener("click", (e) => { const b = e.target.closest("[data-onglet]"); if (b) choisirOnglet(b.dataset.onglet); });
+    $("#adm-onglets").addEventListener("keydown", (e) => {
+      const tous = [...$("#adm-onglets").querySelectorAll("[role=tab]")], i = tous.findIndex((b) => b.dataset.onglet === etat.adminOnglet);
+      const cible = e.key === "ArrowRight" ? tous[(i + 1) % tous.length] : e.key === "ArrowLeft" ? tous[(i - 1 + tous.length) % tous.length] : e.key === "Home" ? tous[0] : e.key === "End" ? tous[tous.length - 1] : null;
+      if (cible) { e.preventDefault(); choisirOnglet(cible.dataset.onglet, true); }
+    });
+  }
+
+  // ----- Sous-rubrique « Frais de port » : enregistrement des tarifs -----
+  function brancherTarifs() {
     const zone = $("#tarifs-port");
     zone.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); e.stopPropagation(); $("#tp-enregistrer").click(); } });
     $("#tp-enregistrer").addEventListener("click", async () => {
@@ -121,68 +137,71 @@ async function vueAdmin(message = "", type = "info") {
     });
   }
 
-  $("#n-ajouter").addEventListener("click", async () => {
-    const libelle = texte($("#n-lib").value);
-    if (!libelle) return erreur("Indiquez un libellé pour le nouveau champ.");
-    const ordre = Math.max(0, ...etat.champs.map((c) => c.ordre)) + 1;
-    try {
-      verifier(await sb.from("champs").insert({ libelle, type: $("#n-type").value, ordre }).select("id"));
-      vueAdmin(`Champ « ${esc(libelle)} » ajouté.`);
-    } catch (e) { erreur(msgErreur(e)); }
-  });
+  // ----- Sous-rubrique « Œuvres » : champs des fiches et listes de choix -----
+  function brancherChamps() {
+    $("#n-ajouter").addEventListener("click", async () => {
+      const libelle = texte($("#n-lib").value);
+      if (!libelle) return erreur("Indiquez un libellé pour le nouveau champ.");
+      const ordre = Math.max(0, ...etat.champs.map((c) => c.ordre)) + 1;
+      try {
+        verifier(await sb.from("champs").insert({ libelle, type: $("#n-type").value, ordre }).select("id"));
+        vueAdmin(`Champ « ${esc(libelle)} » ajouté.`);
+      } catch (e) { erreur(msgErreur(e)); }
+    });
 
-  $("#adm").addEventListener("input", (e) => {
-    const el = e.target.closest("[data-option]"); if (!el) return;
-    const v = el.value.trim();
-    el.parentElement.querySelector('[data-action="renommer"]').disabled = !v || v === el.dataset.initial;
-  });
-  $("#adm").addEventListener("keydown", (e) => {
-    if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
-    const b = e.target.id === "n-lib" ? $("#n-ajouter")
-      : e.target.parentElement.querySelector('[data-action="renommer"]:not([disabled]), [data-action="libelle"], [data-action="ajouter"]');
-    if (b) { e.preventDefault(); b.click(); }
-  });
-  $("#adm").addEventListener("click", async (e) => {
-    const b = e.target.closest("button[data-action]"); if (!b) return;
-    const bloc = b.closest("[data-champ]");
-    const c = etat.champs.find((x) => x.id === bloc.dataset.champ);
-    const action = b.dataset.action, i = Number(b.dataset.i);
-    etat.adminOuvert = c.id;
-    if (action === "retirer" || action === "supprimer") {
-      const accord = await confirmer(action === "retirer"
-        ? { titre: "Retirer ce choix ?", corps: `« ${c.options[i]} » ne sera plus proposé dans la liste « ${c.libelle} ». Les œuvres qui l'utilisent le conservent.`, action: "Retirer le choix" }
-        : { titre: "Supprimer ce champ ?", corps: `Le champ « ${c.libelle} » disparaîtra de toutes les fiches.`, action: "Supprimer le champ" });
-      if (!accord) return;
-    }
-    b.disabled = true;
-    try {
-      let ok = "";
-      if (action === "libelle") {
-        const v = texte($("#lib-" + c.id).value);
-        if (!v) throw new Error("Le libellé ne peut pas être vide.");
-        verifier(await sb.from("champs").update({ libelle: v }).eq("id", c.id).select("id"));
-        ok = "Libellé enregistré.";
-      } else if (action === "ajouter") {
-        const v = texte($("[data-nouveau]", bloc).value);
-        if (!v) throw new Error("Saisissez le nouveau choix.");
-        if (c.options.includes(v)) throw new Error("Ce choix existe déjà.");
-        verifier(await sb.from("champs").update({ options: [...c.options, v] }).eq("id", c.id).select("id"));
-        ok = `Choix « ${v} » ajouté.`;
-      } else if (action === "renommer") {
-        const v = texte($(`[data-option="${i}"]`, bloc).value);
-        if (!v) throw new Error("Le choix ne peut pas être vide.");
-        if (v === c.options[i]) { b.disabled = false; return; }
-        const res = await sb.rpc("renommer_option", { p_champ: c.id, p_ancien: c.options[i], p_nouveau: v });
-        if (res.error) throw res.error;
-        ok = `Choix renommé en « ${v} ». Œuvres mises à jour : ${res.data}.`;
-      } else if (action === "retirer") {
-        verifier(await sb.from("champs").update({ options: c.options.filter((_, k) => k !== i) }).eq("id", c.id).select("id"));
-        ok = `Choix « ${c.options[i]} » retiré de la liste. Les œuvres qui l'utilisaient le conservent.`;
-      } else if (action === "supprimer") {
-        verifier(await sb.from("champs").delete().eq("id", c.id).select("id"));
-        ok = `Champ « ${c.libelle} » supprimé.`;
+    $("#adm").addEventListener("input", (e) => {
+      const el = e.target.closest("[data-option]"); if (!el) return;
+      const v = el.value.trim();
+      el.parentElement.querySelector('[data-action="renommer"]').disabled = !v || v === el.dataset.initial;
+    });
+    $("#adm").addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+      const b = e.target.id === "n-lib" ? $("#n-ajouter")
+        : e.target.parentElement.querySelector('[data-action="renommer"]:not([disabled]), [data-action="libelle"], [data-action="ajouter"]');
+      if (b) { e.preventDefault(); b.click(); }
+    });
+    $("#adm").addEventListener("click", async (e) => {
+      const b = e.target.closest("button[data-action]"); if (!b) return;
+      const bloc = b.closest("[data-champ]");
+      const c = etat.champs.find((x) => x.id === bloc.dataset.champ);
+      const action = b.dataset.action, i = Number(b.dataset.i);
+      etat.adminOuvert = c.id;
+      if (action === "retirer" || action === "supprimer") {
+        const accord = await confirmer(action === "retirer"
+          ? { titre: "Retirer ce choix ?", corps: `« ${c.options[i]} » ne sera plus proposé dans la liste « ${c.libelle} ». Les œuvres qui l'utilisent le conservent.`, action: "Retirer le choix" }
+          : { titre: "Supprimer ce champ ?", corps: `Le champ « ${c.libelle} » disparaîtra de toutes les fiches.`, action: "Supprimer le champ" });
+        if (!accord) return;
       }
-      vueAdmin(esc(ok));
-    } catch (err) { b.disabled = false; erreur(msgErreur(err)); }
-  });
+      b.disabled = true;
+      try {
+        let ok = "";
+        if (action === "libelle") {
+          const v = texte($("#lib-" + c.id).value);
+          if (!v) throw new Error("Le libellé ne peut pas être vide.");
+          verifier(await sb.from("champs").update({ libelle: v }).eq("id", c.id).select("id"));
+          ok = "Libellé enregistré.";
+        } else if (action === "ajouter") {
+          const v = texte($("[data-nouveau]", bloc).value);
+          if (!v) throw new Error("Saisissez le nouveau choix.");
+          if (c.options.includes(v)) throw new Error("Ce choix existe déjà.");
+          verifier(await sb.from("champs").update({ options: [...c.options, v] }).eq("id", c.id).select("id"));
+          ok = `Choix « ${v} » ajouté.`;
+        } else if (action === "renommer") {
+          const v = texte($(`[data-option="${i}"]`, bloc).value);
+          if (!v) throw new Error("Le choix ne peut pas être vide.");
+          if (v === c.options[i]) { b.disabled = false; return; }
+          const res = await sb.rpc("renommer_option", { p_champ: c.id, p_ancien: c.options[i], p_nouveau: v });
+          if (res.error) throw res.error;
+          ok = `Choix renommé en « ${v} ». Œuvres mises à jour : ${res.data}.`;
+        } else if (action === "retirer") {
+          verifier(await sb.from("champs").update({ options: c.options.filter((_, k) => k !== i) }).eq("id", c.id).select("id"));
+          ok = `Choix « ${c.options[i]} » retiré de la liste. Les œuvres qui l'utilisaient le conservent.`;
+        } else if (action === "supprimer") {
+          verifier(await sb.from("champs").delete().eq("id", c.id).select("id"));
+          ok = `Champ « ${c.libelle} » supprimé.`;
+        }
+        vueAdmin(esc(ok));
+      } catch (err) { b.disabled = false; erreur(msgErreur(err)); }
+    });
+  }
 }

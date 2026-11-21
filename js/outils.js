@@ -155,4 +155,6 @@ const champsPerso = () => etat.champs.filter((c) => !c.systeme);
 /* Les vignettes apparaissent en fondu une fois chargées. */
 document.addEventListener("load", (e) => { if (e.target.tagName === "IMG") e.target.classList.add("pret"); }, true);
 document.addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.classList.add("pret"); }, true);
+// Texte comparable pour une recherche : sans accents ni majuscules
+const sansAccent = (t) => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 function arriver() { app.classList.remove("arrive"); void app.offsetWidth; app.classList.add("arrive"); }

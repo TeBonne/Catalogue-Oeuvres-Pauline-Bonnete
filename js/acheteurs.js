@@ -32,7 +32,6 @@ async function vueAcheteurs(message = "") {
     $("#retour").addEventListener("click", vueListe); $("#reessayer").addEventListener("click", () => vueAcheteurs());
     return;
   }
-  const sansAccent = (t) => (t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const total = (l) => l.reduce((t, o) => t + (Number(o.prix_vendu_eur) || 0), 0);
   app.innerHTML = `
     <div class="etroit">
