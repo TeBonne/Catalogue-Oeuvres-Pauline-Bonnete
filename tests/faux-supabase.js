@@ -1,4 +1,7 @@
 (function () {
+  // Personne connectée : Antoine (pilote des retours) par défaut, Pauline avec « ?pauline » dans l'adresse
+  const MOI = location.search.includes("pauline") ? "pauline.bonnete@gmail.com" : "antoine.bonnete@gmail.com";
+  const PILOTE = MOI.startsWith("antoine");
   const couleurs = ["#c98b6b","#7d9a8c","#d9b44a","#6c7a9c","#b5651d","#8e6c8a","#4f7c6b","#c0504d","#9aa66b","#5b8fb0","#d08c9e","#7a6a53","#a3b7c9","#e0a86a"];
   const img = (i, w, h) => "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="${couleurs[i % couleurs.length]}"/><circle cx="${w*0.35}" cy="${h*0.4}" r="${Math.min(w,h)*0.22}" fill="rgba(255,255,255,.35)"/><rect x="${w*0.5}" y="${h*0.55}" width="${w*0.35}" height="${h*0.3}" fill="rgba(0,0,0,.18)"/></svg>`);
   const titres = ["Girafe","Bouquet de pivoines sur fond bleu nuit","83187","Marée basse à Cancale","83183","Portrait de Jeanne","Les toits de Paris au petit matin","83173","Nature morte aux citrons","Titre 1","Forêt de Rambouillet","83159","Champ de coquelicots","Chat endormi"];
@@ -7,7 +10,7 @@
   const pvd = [450,null,300,400,null,480,620,null,null,700,350,null,null,null];
   const tech = ["Aquarelle","Acrylique",null,"Peinture à l'huile",null,"Pastel","Acrylique",null,"Aquarelle","Acrylique","Peinture à l'huile",null,"Aquarelle","Pastel"];
   const db = {
-    membres: [{ email: "antoine.bonnete@gmail.com", admin: true, tutoriel_vu: !location.search.includes("premiere") }],
+    membres: [{ email: MOI, admin: true, pilote_retours: PILOTE, tutoriel_vu: !location.search.includes("premiere") }],
     champs: [
       { id: "c1", cle: "technique", libelle: "Technique", type: "liste", options: ["Acrylique","Aquarelle","Pastel","Peinture à l'huile"], ordre: 1, systeme: true },
       { id: "c2", cle: "support", libelle: "Support", type: "liste", options: ["Toile","Papier type Canson","Bois"], ordre: 2, systeme: true },
@@ -29,6 +32,27 @@
     tarifs_port: [{ cle: "petit", libelle: "Petit", montant_eur: 15, ordre: 1 }, { cle: "moyen", libelle: "Moyen", montant_eur: 28.5, ordre: 2 }, { cle: "gros", libelle: "Gros", montant_eur: 45, ordre: 3 }, { cle: "tres_gros", libelle: "Très gros", montant_eur: 0, ordre: 4 }, { cle: "main_propre", libelle: "Remise en main propre", montant_eur: 0, ordre: 5 }],
     photos_oeuvre: [{ id: "ph1", oeuvre_id: "o0", photo_path: "p5", vignette_path: "v5", poids_octets: 140000, cree_le: "2026-11-01T10:00:00Z" },
       { id: "ph2", oeuvre_id: "o0", photo_path: "p6", vignette_path: "v6", poids_octets: 150000, cree_le: "2026-11-02T10:00:00Z" }],
+    retours: [
+      ["r1", "pauline", "bug", "bloquant", "Le prix ne s'enregistre pas avec une virgule", "Je saisis 250,50 dans le prix, j'enregistre, et le prix revient à 250.", "nouveau", true, "2026-11-24T09:12:00Z",
+        { page: "Fiche d'une œuvre", vue: "vueFiche", oeuvre: { id: "o1", titre: "Bouquet de pivoines sur fond bleu nuit" }, saisie_en_cours: true, messages_erreur: ["Le prix n'est pas valide."] }, ["retours/r1/capture-1.jpg"]],
+      ["r2", "pauline", "amelioration", "mineur", "Pouvoir dupliquer une fiche", "Pour les séries, je ressaisis tout à chaque fois.", "livre", true, "2026-11-20T15:40:00Z", { page: "Catalogue des œuvres", vue: "vueListe", catalogue: { statut: "toutes", recherche: "", tri: "ajout-desc", affichage: "grille", selection: null } }, []],
+      ["r3", "pauline", "question", "mineur", "À quoi sert le champ Série ?", null, "precision", true, "2026-11-22T11:05:00Z", { page: "Fiche d'une œuvre", vue: "vueFiche", oeuvre: { nouvelle: true } }, []],
+      ["r4", "antoine", "amelioration", "genant", "Export PDF du catalogue", "Un PDF des œuvres disponibles, à envoyer à une galerie.", "accepte", false, "2026-11-23T18:30:00Z", { page: "Suivi des ventes", vue: "vueVentes", ventes: { regroupement: "mois", annee: 2026, periode: null, tri: "date-desc", filtres: {} } }, []],
+      ["r5", "pauline", "bug", "genant", "Vignettes floues dans la liste", "Sur l'ordinateur, les petites images sont floues.", "valide", true, "2026-11-18T08:20:00Z", { page: "Catalogue des œuvres", vue: "vueListe" }, []],
+      ["r6", "pauline", "amelioration", "mineur", "Changer la couleur du fond", null, "refuse", true, "2026-11-17T17:00:00Z", { page: "Catalogue des œuvres", vue: "vueListe" }, []],
+      ["r7", "pauline", "bug", "bloquant", "Impossible d'ajouter une photo", "Le bouton ne réagissait pas.", "clos", true, "2026-11-17T10:00:00Z", { page: "Fiche d'une œuvre", vue: "vueFiche", oeuvre: { id: "o0", titre: "Girafe" } }, ["retours/r7/capture-1.jpg", "retours/r7/capture-2.jpg"]]
+    ].map(([id, qui, type, gene, titre, description, statut, avis_demande, cree_le, contexte, captures], i) => ({
+      id, numero: i + 1, auteur_email: qui + ".bonnete@gmail.com", type, gene, titre, description, statut, avis_demande, cree_le, modifie_le: cree_le,
+      contexte: { date: cree_le, affichage: "ordinateur", fenetre: "1280 × 800", ecran: "1920 × 1080", navigateur: "Navigateur de test", ...contexte }, captures,
+      motif_refus: statut === "refuse" ? "Le fond clair met mieux les tableaux en valeur." : null,
+      note_livraison: ["livre", "valide", "clos"].includes(statut) ? "Correction en place. À vérifier sur une fiche existante." : null
+    })),
+    retours_messages: [
+      { id: "m1", retour_id: "r2", auteur: "antoine.bonnete@gmail.com", evenement: "accepte", corps: null, cree_le: "2026-11-20T18:00:00Z" },
+      { id: "m2", retour_id: "r2", auteur: "claude", evenement: "livre", corps: "Bouton « Dupliquer » ajouté en bas de la fiche.", cree_le: "2026-11-21T09:00:00Z" },
+      { id: "m3", retour_id: "r3", auteur: "antoine.bonnete@gmail.com", evenement: "precision", corps: "Tu voudrais qu'il soit expliqué dans la fiche, ou retiré ?", cree_le: "2026-11-22T12:00:00Z" },
+      { id: "m4", retour_id: "r1", auteur: "pauline.bonnete@gmail.com", evenement: null, corps: "Ça le fait aussi sur le téléphone.", cree_le: "2026-11-24T09:30:00Z" }
+    ],
     acheteurs: [{ id: "a1", prenom: "Hélène", nom: "Martin", email: "helene.martin@exemple.fr", telephone: null, ville: "Vannes", notes: null },
       { id: "a2", prenom: "Paul", nom: "Durand", email: null, telephone: "06 00 00 00 00", ville: null, notes: "Collectionneur" }],
     oeuvres: titres.map((t, i) => ({
@@ -70,7 +94,9 @@
       }, limit(n) { rows = rows.slice(0, n); return q; },
       range(a, b) { range = [a, b]; return q; }, single() { single = true; return q; },
       then(ok) { if (op === "u") rows.forEach((r) => Object.assign(r, charge));
-        if (op === "i") { rows = [].concat(charge).map((x) => ({ id: x.id || crypto.randomUUID(), ...JSON.parse(JSON.stringify(x)) })); db[table].push(...rows); }
+        if (op === "i") { rows = [].concat(charge).map((x) => ({ id: x.id || crypto.randomUUID(), ...JSON.parse(JSON.stringify(x)) })); if (table === "retours") rows.forEach((r) => Object.assign(r, { numero: 1 + Math.max(0, ...db.retours.map((x) => x.numero)), auteur_email: MOI, statut: PILOTE ? "accepte" : "nouveau", avis_demande: PILOTE ? !!r.avis_demande : true, motif_refus: null, note_livraison: null, cree_le: new Date().toISOString() }));
+        if (table === "retours_messages") rows.forEach((r) => Object.assign(r, { evenement: null, cree_le: new Date().toISOString() }));
+        db[table].push(...rows); }
         if (op === "d") { db[table] = db[table].filter((r) => !rows.includes(r)); if (table === "acheteurs") db.oeuvres.forEach((o) => { if (rows.some((r) => r.id === o.acheteur_id)) o.acheteur_id = null; }); } const count = rows.length; let data = range ? rows.slice(range[0], range[1] + 1) : rows; if (single) data = data[0]; if (head) data = null; if (data) data = JSON.parse(JSON.stringify(data)); /* comme une vraie API : des copies */ return Promise.resolve({ data, count: wantCount ? count : null, error: null }).then(ok); }
     };
     return q;
@@ -79,17 +105,32 @@
   const sb = {
     auth: {
       onAuthStateChange(cb) {
-        const h = location.hash, session = (h === "#connexion" || h.includes("error")) ? null : { user: { id: "u1", email: "antoine.bonnete@gmail.com" } };
+        const h = location.hash, session = (h === "#connexion" || h.includes("error")) ? null : { user: { id: "u1", email: MOI } };
         setTimeout(() => cb(h.includes("type=recovery") ? "PASSWORD_RECOVERY" : "SIGNED_IN", session), 0);
         if (h.includes("type=recovery")) setTimeout(() => cb("INITIAL_SESSION", session), 30); // comme la vraie bibliothèque : deux événements
       },
       signOut() {}, signInWithPassword: async () => ({ error: { message: "Invalid login credentials" } }), signUp: async () => ({ data: {}, error: null }),
       resetPasswordForEmail: async (email, o) => { window.__reset = { email, redirectTo: o.redirectTo }; return email.startsWith("trop") ? { error: { status: 429, message: "email rate limit exceeded" } } : { data: {}, error: null }; },
       updateUser: async (v) => { window.__maj_mdp = v.password.length; return v.password === "ancien-mot-de-passe" ? { error: { message: "New password should be different from the old password." } } : { data: {}, error: null }; },
-      getSession: async () => ({ data: { session: { user: { id: "u1", email: "antoine.bonnete@gmail.com" } } } })
+      getSession: async () => ({ data: { session: { user: { id: "u1", email: MOI } } } })
     },
     from: (t) => Q(t),
     rpc: async (nom, a) => {
+      if (nom === "changer_statut_retour") { // mêmes règles que la fonction de la base
+        const r = db.retours.find((x) => x.id === a.p_id), de = r && r.statut, com = (a.p_commentaire || "").trim() || null; let vers = a.p_statut;
+        if (!r) return { data: null, error: { message: "Retour introuvable" } };
+        const permis = PILOTE
+          ? { nouveau: ["accepte", "refuse", "precision"], precision: ["accepte", "refuse"], accepte: ["en_cours", "refuse"], en_cours: ["livre"], livre: ["valide", "en_cours"], valide: ["clos"], refuse: ["accepte"], clos: ["accepte"] }
+          : { precision: r.auteur_email === MOI ? ["nouveau"] : [], valide: ["clos", "en_cours"] };
+        if (!(permis[de] || []).includes(vers)) return { data: null, error: { message: "Ce changement de statut n'est pas permis" } };
+        const exige = vers === "refuse" || vers === "precision" || (vers === "nouveau") || (vers === "en_cours" && de !== "accepte") || (vers === "accepte" && de !== "nouveau" && de !== "precision");
+        if (exige && !com) return { data: null, error: { message: "Un commentaire est nécessaire" } };
+        const evenement = vers === "accepte" && (de === "refuse" || de === "clos") ? "rouvert" : vers === "en_cours" && de !== "accepte" ? "a_reprendre" : vers;
+        if (vers === "valide" && !r.avis_demande) vers = "clos";
+        Object.assign(r, { statut: vers }, vers === "refuse" ? { motif_refus: com } : {}, vers === "livre" ? { note_livraison: com } : {});
+        db.retours_messages.push({ id: crypto.randomUUID(), retour_id: r.id, auteur: MOI, evenement: vers === "clos" && evenement === "valide" ? "clos" : evenement, corps: com, cree_le: new Date().toISOString() });
+        return { data: JSON.parse(JSON.stringify(r)), error: null };
+      }
       if (nom !== "emettre_certificat") return { data: 0, error: null };
       const annee = +a.p_date.slice(0, 4), seq = 1 + Math.max(0, ...db.certificats.filter((c) => c.annee === annee).map((c) => c.sequence));
       const c = { id: a.p_id, annee, sequence: seq, numero: `PB-${annee}-${String(seq).padStart(4, "0")}`, code_verif: "fedcba9876543210fedcba9876543210", oeuvre_id: a.p_oeuvre,

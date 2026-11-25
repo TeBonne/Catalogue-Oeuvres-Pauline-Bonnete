@@ -272,7 +272,8 @@ def test_tutoriel_premiere_connexion(ouvrir):
 def test_toutes_les_vues(ouvrir):
     p = ouvrir()
     for vue in ["vueFiche('o0')", "vueFiche(null)", "etat.modifie = false; vueAdmin()", "vueCorbeille()", "vueImport()", "vueVentes()",
-                "vueCertificats()", "vueCertificat('k1')", "vueAcheteurs()", "vueAcheteur('a1')", "etat.vue = 'liste'; vueListe()"]:
+                "vueCertificats()", "vueCertificat('k1')", "vueAcheteurs()", "vueAcheteur('a1')", "vueRetours()", "vueRetour('r1')", "vueRetour('r7')",
+                "etat.vue = 'liste'; vueListe()"]:
         js(p, vue); p.wait_for_timeout(500)
         assert p.locator("#app").inner_text().strip(), vue
         assert not deborde(p), f"débordement horizontal : {vue}"
@@ -376,3 +377,123 @@ def test_limite_de_photos(ouvrir):
     p.set_input_files("#photos-plus", [{"name": f"p{i}.png", "mimeType": "image/png", "buffer": PNG} for i in range(9)]); p.wait_for_timeout(2500)
     assert p.locator(".galerie figure").count() == 8 and p.locator(".galerie-ajout").count() == 0
     assert "3 non envoyées" in p.locator("#galerie-message").inner_text()
+
+
+# ---------- Retours et demandes ----------
+RETOUR = "retours.find(r => r.id === '%s')"
+
+
+def test_retour_depuis_une_fiche(ouvrir):
+    p = ouvrir()
+    js(p, "vueFiche('o0')"); p.wait_for_timeout(700)
+    p.fill("#titre", "Girafe retouchée")
+    p.click("#retour-onglet"); p.wait_for_timeout(400)
+    assert p.locator("#rt-page").inner_text() == "Fiche d'une œuvre : Girafe retouchée"
+    assert p.locator("#f").count() == 1 and p.input_value("#titre") == "Girafe retouchée", "la page reste ouverte derrière le panneau, saisie comprise"
+    p.click("#rt-envoyer"); assert "en une phrase" in p.locator("#rt-alerte").inner_text()
+    p.fill("#rt-resume", "Le titre déborde"); p.fill("#rt-detail", "Sur un titre long."); p.check('[name="rt-type"][value="amelioration"]'); p.select_option("#rt-gene", "mineur")
+    p.set_input_files("#rt-fichier", [{"name": f"capture-{i}.png", "mimeType": "image/png", "buffer": PNG} for i in range(2)]); p.wait_for_timeout(500)
+    assert p.locator("#rt-vignettes figure").count() == 2
+    p.locator("#rt-vignettes [data-retirer]").first.click(); assert p.locator("#rt-vignettes figure").count() == 1
+    p.click("#rt-envoyer"); p.wait_for_timeout(700)
+    assert p.locator("#retour-panneau").count() == 0 and p.locator(".bandeau span").inner_text() == "Retour n° 8 envoyé"
+    r = "retours.find(r => r.numero === 8)"
+    assert [base(p, r + ".type"), base(p, r + ".gene"), base(p, r + ".titre"), base(p, r + ".statut")] == ["amelioration", "mineur", "Le titre déborde", "accepte"], "une demande du pilote naît acceptée"
+    assert base(p, r + ".contexte.vue") == "vueFiche" and base(p, r + ".contexte.oeuvre") == {"id": "o0", "titre": "Girafe retouchée"}
+    assert base(p, r + ".contexte.saisie_en_cours") is True and base(p, r + ".avis_demande") is False
+    chemins = base(p, r + ".captures"); assert len(chemins) == 1 and chemins[0].startswith("retours/") and chemins[0].endswith("/capture-1.jpg")
+    assert p.evaluate("window.__envois.includes(%r)" % chemins[0]), "la capture est déposée dans le stockage privé"
+    assert p.locator("#f").count() == 1 and p.evaluate("etat.modifie") is True, "la fiche n'a pas été quittée"
+    assert not deborde(p)
+
+
+def test_retour_abandon_et_contexte_du_catalogue(ouvrir):
+    p = ouvrir()
+    p.fill("#q", "girafe"); p.wait_for_timeout(600)
+    js(p, "ouvrirRetour()"); p.wait_for_timeout(300)
+    assert "recherche « girafe »" in p.locator(".rt-contexte-liste").text_content(), "le contexte est joint, replié par défaut"
+    p.click("#rt-annuler"); assert p.locator("#retour-panneau").count() == 0, "rien de saisi : fermeture immédiate"
+    js(p, "ouvrirRetour()"); p.wait_for_timeout(300)
+    p.fill("#rt-resume", "Brouillon"); p.keyboard.press("Escape"); p.wait_for_timeout(200)
+    assert p.locator(".dialogue h2").inner_text() == "Abandonner ce retour ?"
+    p.click('.dialogue [data-r="non"]'); assert p.input_value("#rt-resume") == "Brouillon"
+    p.click("#rt-fermer"); p.click('.dialogue [data-r="oui"]'); p.wait_for_timeout(200)
+    assert p.locator("#retour-panneau").count() == 0 and base(p, "retours.length") == 7
+
+
+def test_liste_des_retours(ouvrir, ecran):
+    p = ouvrir()
+    if ecran == "ordinateur":
+        assert p.locator('#lateral [data-nav="retours"] .n').inner_text() == "2", "deux retours attendent le pilote : un nouveau, un livré"
+    js(p, "vueRetours()"); p.wait_for_timeout(700)
+    titres = lambda: p.locator("#liste-retours .titre").all_inner_texts()
+    assert len(titres()) == 5 and titres()[:2] == ["Le prix ne s'enregistre pas avec une virgule", "Pouvoir dupliquer une fiche"], "ceux qui attendent le pilote d'abord"
+    assert p.locator("#rt-resume-liste").inner_text() == "5 retours sur 7, dont 2 en attente de votre action."
+    p.select_option("#rt-statut", "moi"); assert len(titres()) == 2
+    p.select_option("#rt-statut", ""); assert len(titres()) == 7
+    p.select_option("#rt-type", "question"); assert titres() == ["À quoi sert le champ Série ?"]
+    p.select_option("#rt-type", ""); p.select_option("#rt-auteur", "antoine.bonnete@gmail.com"); assert titres() == ["Export PDF du catalogue"]
+    p.select_option("#rt-auteur", ""); p.fill("#rt-q", "#5"); p.wait_for_timeout(350); assert titres() == ["Vignettes floues dans la liste"]
+    p.locator("#liste-retours .vente").first.click(); p.wait_for_timeout(600)
+    assert "Vignettes floues" in p.locator("h1").inner_text()
+    p.click("#retour"); p.wait_for_timeout(600); assert p.input_value("#rt-q") == "#5", "les filtres sont conservés au retour"
+    assert not deborde(p)
+
+
+def test_circuit_du_pilote(ouvrir):
+    p = ouvrir()
+    statut = lambda i: base(p, RETOUR % i + ".statut")
+    agir = lambda a: (p.click(f'[data-action="{a}"]'), p.wait_for_timeout(250))
+    js(p, "vueRetour('r1')"); p.wait_for_timeout(700)
+    assert p.locator("#rt-captures img").count() == 1 and "Bouquet de pivoines" in p.locator(".rt-contexte-liste").inner_text()
+    assert p.locator('.rt-etapes [aria-current="step"]').inner_text() == "Nouveau"
+    # un refus exige un motif
+    agir("refuser"); p.click(".dialogue button[type=submit]"); assert "nécessaire" in p.locator("#sai-erreur").inner_text()
+    p.click('.dialogue [data-r="non"]'); assert statut("r1") == "nouveau"
+    agir("accepter"); p.wait_for_timeout(500); assert statut("r1") == "accepte" and p.locator(".bandeau").inner_text() == "Retour accepté"
+    agir("commencer"); p.wait_for_timeout(500); assert statut("r1") == "en_cours"
+    agir("livrer"); p.fill("#sai-texte", "Virgule acceptée dans le prix."); p.click(".dialogue button[type=submit]"); p.wait_for_timeout(600)
+    assert statut("r1") == "livre" and "Virgule acceptée" in p.locator(".message.info").inner_text()
+    agir("valider"); p.wait_for_timeout(500)
+    assert statut("r1") == "valide", "l'avis de l'artiste est attendu avant la clôture"
+    assert "Antoine a validé la correction" in p.locator("#rt-fil").inner_text()
+    # une demande du pilote sans avis demandé est close dès sa validation
+    js(p, "window.__db.retours.find(r => r.id === 'r4').statut = 'livre'; vueRetour('r4')"); p.wait_for_timeout(700)
+    assert p.locator(".rt-etapes li").count() == 5 and p.locator('[data-action="valider"]').inner_text() == "Valider et clore"
+    agir("valider"); p.wait_for_timeout(500); assert statut("r4") == "clos"
+    # commentaire
+    p.fill("#rt-commentaire", "Vu, merci."); p.click("#rt-publier"); p.wait_for_timeout(600)
+    assert base(p, "retours_messages.filter(m => m.retour_id === 'r4' && !m.evenement).map(m => [m.auteur, m.corps])") == [["antoine.bonnete@gmail.com", "Vu, merci."]]
+    # contexte : ouvrir la fiche concernée
+    js(p, "vueRetour('r7')"); p.wait_for_timeout(700); p.click("#rt-ouvrir"); p.wait_for_timeout(700)
+    assert p.input_value("#titre") == "Girafe"
+    assert not deborde(p)
+
+
+def test_avis_de_l_artiste(ouvrir, ecran):
+    p = ouvrir("?pauline=1")
+    statut = lambda i: base(p, RETOUR % i + ".statut")
+    if ecran == "ordinateur":
+        assert p.locator('#lateral [data-nav="retours"] .n').inner_text() == "2", "une réponse à donner, un avis à donner"
+    # un retour nouveau : aucune action, la décision appartient au pilote
+    js(p, "vueRetour('r1')"); p.wait_for_timeout(700)
+    assert p.locator("[data-action]").count() == 0 and "décision de Antoine" in p.locator(".rt-phrase").inner_text()
+    # réponse à une demande de précision
+    js(p, "vueRetour('r3')"); p.wait_for_timeout(700)
+    p.click('[data-action="repondre"]'); p.fill("#sai-texte", "Je préfère qu'il soit expliqué."); p.click(".dialogue button[type=submit]"); p.wait_for_timeout(600)
+    assert statut("r3") == "nouveau"
+    # avis après validation : non (commentaire obligatoire), puis oui
+    js(p, "vueRetour('r5')"); p.wait_for_timeout(700)
+    assert "Est-ce que cela vous convient" in p.locator(".rt-phrase").inner_text()
+    p.click('[data-action="convient_pas"]'); p.click(".dialogue button[type=submit]"); assert statut("r5") == "valide"
+    p.fill("#sai-texte", "Toujours flou en liste."); p.click(".dialogue button[type=submit]"); p.wait_for_timeout(600)
+    assert statut("r5") == "en_cours" and "a renvoyé en correction" in p.locator("#rt-fil").inner_text()
+    js(p, "window.__db.retours.find(r => r.id === 'r5').statut = 'valide'; vueRetour('r5')"); p.wait_for_timeout(700)
+    p.click('[data-action="convient"]'); p.wait_for_timeout(600); assert statut("r5") == "clos"
+    # un retour créé par l'artiste attend la décision du pilote
+    js(p, "vueVentes()"); p.wait_for_timeout(800); p.click("#retour-onglet"); p.wait_for_timeout(300)
+    assert p.locator("#rt-avis").count() == 0 and p.locator("#rt-page").inner_text() == "Suivi des ventes"
+    p.fill("#rt-resume", "Le graphique est trop petit"); p.click("#rt-envoyer"); p.wait_for_timeout(700)
+    r = "retours.find(r => r.numero === 8)"
+    assert [base(p, r + ".statut"), base(p, r + ".auteur_email"), base(p, r + ".avis_demande"), base(p, r + ".contexte.ventes.regroupement")] == ["nouveau", "pauline.bonnete@gmail.com", True, "mois"]
+    assert not deborde(p)

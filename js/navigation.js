@@ -43,6 +43,9 @@ function majLateral(section) {
     ${etat.admin ? `<div class="lat-titre">Suivi</div>${lien("ventes", "Suivi des ventes", null, ICONES.graphique)}${lien("acheteurs", "Acheteurs", null, ICONES.personnes)}` : ""}
     <div class="lat-titre">Documents</div>
     ${etat.admin ? lien("certificats", "Certificats d'authenticité", null, ICONES.document) : `<button class="lat-lien" disabled><span>${ICONES.document}<span>Certificats d'authenticité</span></span></button>`}
+    <div class="lat-titre">Retours</div>
+    <button class="lat-lien" data-nav="retours" ${etat.section === "retours" ? 'aria-current="page"' : ""}><span>${ICONES.bulle}<span>Tous les retours</span></span><span class="n ${etat.retoursAFaire ? "a-faire" : ""}">${etat.retoursAFaire || ""}</span></button>
+    ${lien("retour-nouveau", "Faire un retour", null, ICONES.plus)}
     ${etat.admin ? `<div class="lat-titre">Maintenance</div>${lien("corbeille", "Corbeille", etat.enCorbeille, ICONES.corbeille)}` : ""}
     <div class="lat-bas">${lien("tutoriel", "Revoir le tutoriel", null, ICONES.aide)}<button class="lat-lien" data-nav="sortir"><span>${ICONES.sortir}<span>Déconnexion</span></span></button></div>`;
   lateral.hidden = false; document.body.classList.add("avec-lateral");
@@ -51,6 +54,7 @@ lateral.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-nav]"); if (!b || etat.occupe) return;
   const nav = b.dataset.nav;
   if (nav === "fermer") return fermerMenu(true);
+  if (nav === "retour-nouveau") { fermerMenu(); return ouvrirRetour(); } // s'ouvre par-dessus la page : rien n'est quitté
   if (etat.gardien && !(await etat.gardien())) return;
   etat.retour = null;
   fermerMenu();
@@ -59,6 +63,7 @@ lateral.addEventListener("click", async (e) => {
   else if (nav === "ventes") vueVentes();
   else if (nav === "acheteurs") vueAcheteurs();
   else if (nav === "certificats") vueCertificats();
+  else if (nav === "retours") vueRetours();
   else if (nav === "tutoriel") lancerTutoriel();
   else if (nav === "sortir") sb.auth.signOut();
   else { etat.statut = nav.slice(6); vueListe(); }

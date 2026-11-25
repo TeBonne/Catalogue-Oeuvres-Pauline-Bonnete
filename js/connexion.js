@@ -167,10 +167,11 @@ async function demarrer(session) {
   if (!session) { etat.utilisateur = null; return vueConnexion(); }
   if (etat.utilisateur === session.user.id) return;
   etat.utilisateur = session.user.id;
-  const { data, error } = await sb.from("membres").select("email,admin,tutoriel_vu").limit(1);
+  const { data, error } = await sb.from("membres").select("email,admin,tutoriel_vu,pilote_retours").limit(1);
   if (error) return vueConnexion(msgErreur(error));
   if (!data.length) return vueNonAutorise(session.user.email);
   etat.admin = !!data[0].admin; etat.email = data[0].email; etat.tutorielVu = data[0].tutoriel_vu !== false;
+  etat.pilote = !!data[0].pilote_retours; chargerCompteRetours(); // pilote : décide des retours et valide leur correction
   try { await chargerChamps(); } catch (_) { etat.champs = []; }
   try { await chargerTarifs(); } catch (_) { etat.tarifs = []; }
   if (etat.admin) assurerImageAccueil();

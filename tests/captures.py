@@ -10,7 +10,8 @@ RACINE = pathlib.Path(__file__).resolve().parent.parent
 FAUX = (RACINE / "tests" / "faux-supabase.js").read_text(encoding="utf-8")
 VUES = [("catalogue", ""), ("catalogue-liste", "etat.vue = 'liste'; vueListe()"), ("fiche", "vueFiche('o0')"), ("fiche-neuve", "vueFiche(null)"),
         ("administration", "etat.modifie = false; vueAdmin()"), ("corbeille", "vueCorbeille()"), ("import", "vueImport()"), ("ventes", "vueVentes()"),
-        ("certificats", "vueCertificats()"), ("certificat", "vueCertificat('k1')"), ("certificat-nouveau", "vueCertificatNouveau('o0')")]
+        ("certificats", "vueCertificats()"), ("certificat", "vueCertificat('k1')"), ("certificat-nouveau", "vueCertificatNouveau('o0')"),
+        ("retours", "vueRetours()"), ("retour", "vueRetour('r1')"), ("retour-livre", "vueRetour('r2')"), ("retour-saisie", "vueVentes(); setTimeout(ouvrirRetour, 700)")]
 
 
 class Silencieux(http.server.SimpleHTTPRequestHandler):
